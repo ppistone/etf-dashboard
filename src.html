@@ -1,0 +1,4422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>金融仪表盘 · 指数ETF & 大宗商品</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #f5f6fa;
+  color: #333;
+  display: flex;
+  min-height: 100vh;
+  padding: 0;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ===== 侧边导航栏 ===== */
+.sidebar {
+  position: fixed;
+  top: 0; left: 0;
+  width: 200px;
+  height: 100vh;
+  background: #1a1a2e;
+  color: #ccc;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transition: transform 0.3s;
+}
+.sidebar-header {
+  padding: 18px 16px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 4px;
+}
+.sidebar-header .s-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+}
+.sidebar-header .s-sub {
+  font-size: 11px;
+  color: #777;
+  margin-top: 2px;
+}
+.sidebar-nav { flex: 1; padding: 6px 0; }
+.sidebar-nav .nav-group {
+  padding: 4px 16px 2px;
+  font-size: 10px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 6px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  font-size: 13px;
+  color: #999;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-item:hover { color: #ddd; background: rgba(255,255,255,0.04); }
+.nav-item.active {
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+  border-left-color: #3b82f6;
+  font-weight: 600;
+}
+.nav-item .nav-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.nav-item.active .nav-dot { width: 10px; height: 10px; }
+.sidebar-footer {
+  padding: 10px 16px;
+  font-size: 10px;
+  color: #444;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+/* 汉堡菜单按钮 */
+.menu-toggle {
+  display: none;
+  position: fixed;
+  top: 10px; left: 10px;
+  z-index: 110;
+  width: 36px; height: 36px;
+  border: none;
+  background: #1a1a2e;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 20px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* ===== 主内容区 ===== */
+.main-content {
+  margin-left: 200px;
+  flex: 1;
+  padding: 16px 20px;
+  min-width: 0;
+}
+.header {
+  text-align: center;
+  padding: 0 0 12px;
+}
+.header h1 {
+  font-size: 22px;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+.header .subtitle {
+  color: #888;
+  font-size: 13px;
+}
+.header .update-time {
+  color: #666;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* 数据更新说明图例 */
+.data-note {
+  margin: 10px auto 0;
+  max-width: 1100px;
+  padding: 8px 12px;
+  background: #f7f9fc;
+  border: 1px solid #e3e8ef;
+  border-radius: 8px;
+  font-size: 11px;
+  color: #555;
+  text-align: left;
+}
+.data-note .dn-title {
+  font-weight: 700;
+  color: #2c3e50;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.data-note .dn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+.data-note .dn-tag {
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.data-note .dn-tag.live { color: #1a7a4c; }
+.data-note .dn-tag.frozen { color: #7f8c8d; }
+.data-note .dn-item {
+  background: #fff;
+  border: 1px solid #e3e8ef;
+  padding: 2px 7px;
+  border-radius: 10px;
+  color: #444;
+  white-space: nowrap;
+}
+
+/* 分类区块 */
+.section {
+  margin: 0 0 20px;
+}
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  padding: 12px 16px;
+  border-radius: 8px 8px 0 0;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-title .badge {
+  font-size: 12px;
+  font-weight: 400;
+  background: rgba(255,255,255,0.25);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.section-title.hs300 { background: #c0392b; }
+.section-title.zz500 { background: #2980b9; }
+.section-title.margin { background: #1a5276; }
+.section-title.coal { background: #2c3e50; }
+.section-title.alu { background: #d35400; }
+.section-title.cu-price { background: #b87333; }
+.section-title.cu-inv { background: #a0522d; }
+.section-title.li { background: #1a7a4c; }
+.section-title.liw { background: #2e8d5f; }
+.section-title.gold { background: #c9971a; }
+.section-title.scfi { background: #0e7a8a; }
+.section-title.cyp { background: #2980b9; }
+.section-title.tg { background: #16a085; }
+.section-body {
+  background: #fff;
+  border-radius: 0 0 8px 8px;
+  padding: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+/* 摘要卡片 */
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.card {
+  background: #f8f9fb;
+  border-radius: 8px;
+  padding: 12px 14px;
+  border-left: 3px solid #ddd;
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.card:active { transform: scale(0.97); }
+.card.hs300 { border-left-color: #c0392b; }
+.card.zz500 { border-left-color: #2980b9; }
+.card.margin { border-left-color: #1a5276; }
+.card.coal { border-left-color: #2c3e50; }
+.card.alu { border-left-color: #d35400; }
+.card.cu-price { border-left-color: #b87333; }
+.card.cu-inv { border-left-color: #a0522d; }
+.card.li { border-left-color: #1a7a4c; }
+.card.liw { border-left-color: #2e8d5f; }
+.card.gold { border-left-color: #c9971a; }
+.card.scfi { border-left-color: #0e7a8a; }
+.card.cyp { border-left-color: #2980b9; }
+.card.tg { border-left-color: #16a085; }
+.card.selected {
+  background: #eef4ff;
+  box-shadow: 0 0 0 2px #3b82f6;
+  border-left-width: 4px;
+}
+.card.selected.hs300 { border-left-color: #c0392b; box-shadow: 0 0 0 2px #c0392b; }
+.card.selected.zz500 { border-left-color: #2980b9; box-shadow: 0 0 0 2px #2980b9; }
+.card.selected.margin { border-left-color: #1a5276; box-shadow: 0 0 0 2px #1a5276; }
+.card.selected.coal { border-left-color: #2c3e50; box-shadow: 0 0 0 2px #2c3e50; }
+.card.selected.alu { border-left-color: #d35400; box-shadow: 0 0 0 2px #d35400; }
+.card.selected.cu-price { border-left-color: #b87333; box-shadow: 0 0 0 2px #b87333; }
+.card.selected.cu-inv { border-left-color: #a0522d; box-shadow: 0 0 0 2px #a0522d; }
+.card.selected.li { border-left-color: #1a7a4c; box-shadow: 0 0 0 2px #1a7a4c; }
+.card.selected.liw { border-left-color: #2e8d5f; box-shadow: 0 0 0 2px #2e8d5f; }
+.card.selected.gold { border-left-color: #c9971a; box-shadow: 0 0 0 2px #c9971a; }
+.card.selected.scfi { border-left-color: #0e7a8a; box-shadow: 0 0 0 2px #0e7a8a; }
+.card.selected.cyp { border-left-color: #2980b9; box-shadow: 0 0 0 2px #2980b9; }
+.card .label {
+  font-size: 11px;
+  color: #888;
+}
+
+/* 时间区间滑块（替代按钮 + 滚轮缩放，连续缩放、锚定最新数据） */
+.range-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 4px;
+  border-top: 1px solid #eee;
+  margin-top: 8px;
+}
+.range-cap {
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
+}
+/* 双端时间区间刷选条：可拖动两端调节长度(缩放)，拖动中间平移 */
+.brush {
+  position: relative;
+  flex: 1;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.brush-track {
+  position: absolute;
+  left: 0; right: 0;
+  top: 8px;
+  height: 6px;
+  border-radius: 3px;
+  background: #d7dbe0;
+}
+.brush-selection {
+  position: absolute;
+  top: 8px;
+  height: 6px;
+  border-radius: 3px;
+  background: #2c3e50;
+}
+.brush-handle {
+  position: absolute;
+  top: 4px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: #2c3e50;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  cursor: ew-resize;
+  z-index: 2;
+}
+.brush-handle-left { left: 0; }
+.brush-handle-right { left: 100%; }
+.range-span {
+  font-size: 12px;
+  color: #555;
+  white-space: nowrap;
+  min-width: 220px;
+  text-align: right;
+}
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card .value {
+  font-size: 16px;
+  font-weight: 700;
+}
+.card .change {
+  font-size: 12px;
+  margin-top: 1px;
+}
+.up { color: #e74c3c; }
+.down { color: #27ae60; }
+
+/* 图表 */
+.chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.chart-row.single {
+  grid-template-columns: 1fr;
+}
+.chart-box {
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  padding: 12px;
+}
+.chart-box h3 {
+  font-size: 14px;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+}
+.chart-box h3 .selected-name {
+  color: #3b82f6;
+  font-weight: 600;
+}
+.chart-box .chart-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  color: #fff;
+}
+.chart-box .chart-tag.cum { background: #2980b9; }
+.chart-box .chart-tag.q { background: #9b59b6; }
+.chart-box .chart-caption {
+  font-size: 11px;
+  color: #888;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+.chart-box canvas {
+  width: 100% !important;
+}
+/* PC端图表高度 */
+.chart-row.single .chart-box canvas {
+  height: 380px !important;
+}
+.chart-row:not(.single) .chart-box canvas {
+  height: 260px !important;
+}
+
+/* 表格 */
+.table-box {
+  margin-top: 4px;
+  overflow-x: auto;
+}
+.table-box h3 {
+  font-size: 14px;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+}
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 500px;
+}
+th, td {
+  padding: 8px 10px;
+  text-align: right;
+  border-bottom: 1px solid #f0f0f0;
+  white-space: nowrap;
+}
+th {
+  background: #fafafa;
+  color: #666;
+  font-weight: 600;
+}
+td:first-child, th:first-child { text-align: left; }
+td:nth-child(2), th:nth-child(2) { text-align: left; }
+tr:hover { background: #f8f9ff; }
+tr.selected-row { background: #eef4ff; }
+
+.legend-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.legend-note span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: #888;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.red { background: #e74c3c; }
+.dot.green { background: #27ae60; }
+.dot.orange { background: #e67e22; }
+.dot.purple { background: #9b59b6; }
+.dot.gray { background: #95a5a6; }
+
+.note {
+  max-width: 1400px;
+  margin: 0 auto 16px;
+  padding: 10px 14px;
+  background: #fffbe6;
+  border-radius: 8px;
+  color: #8c7800;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ===== 手机适配 ===== */
+@media (max-width: 768px) {
+  body { flex-direction: column; }
+  .menu-toggle { display: flex; }
+  .sidebar {
+    transform: translateX(-100%);
+    box-shadow: 2px 0 12px rgba(0,0,0,0.3);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 99;
+  }
+  .sidebar-overlay.show { display: block; }
+  .main-content {
+    margin-left: 0;
+    padding: 10px 8px;
+  }
+  .header { padding: 4px 0 8px 44px; }
+  .header h1 { font-size: 17px; }
+  .header .subtitle { font-size: 11px; }
+  .header .update-time { font-size: 11px; }
+  .section-title { font-size: 16px; padding: 10px 12px; }
+  .summary-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .card { padding: 10px 12px; }
+  .card .value { font-size: 14px; }
+  .card .label { font-size: 10px; }
+  .card .change { font-size: 11px; }
+  .chart-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .chart-box { padding: 10px; }
+  .chart-box h3 { font-size: 13px; }
+  .chart-box canvas { height: 300px !important; max-height: 320px; }
+  .table-box { padding: 0; }
+  .table-box h3 { font-size: 13px; }
+  th, td { padding: 6px 8px; font-size: 12px; }
+  .note { font-size: 11px; padding: 8px 10px; }
+}
+@media (max-width: 380px) {
+  .summary-row { grid-template-columns: 1fr; }
+}
+</style>
+<meta name="robots" content="noindex, nofollow">
+</head>
+<body>
+
+<!-- 侧边导航 -->
+<button class="menu-toggle" id="menuToggle" aria-label="菜单">&#9776;</button>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="s-title">ETF 仪表盘</div>
+    <div class="s-sub" style="font-size:10px;color:#666">沪深300 & 中证500</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-group">指数 ETF</div>
+    <a href="#sec-hs300" class="nav-item active" data-section="hs300">
+      <span class="nav-dot" style="background:#c0392b"></span>沪深300 ETF
+    </a>
+    <a href="#sec-zz500" class="nav-item" data-section="zz500">
+      <span class="nav-dot" style="background:#2980b9"></span>中证500 ETF
+    </a>
+    <a href="#sec-margin" class="nav-item" data-section="margin">
+      <span class="nav-dot" style="background:#1a5276"></span>融资融券
+    </a>
+    <div class="nav-group">大宗商品</div>
+    <a href="#sec-coal" class="nav-item" data-section="coal">
+      <span class="nav-dot" style="background:#2c3e50"></span>煤炭价格
+    </a>
+    <a href="#sec-alu" class="nav-item" data-section="alu">
+      <span class="nav-dot" style="background:#d35400"></span>电解铝 · 氧化铝
+    </a>
+    <a href="#sec-inv" class="nav-item" data-section="inv">
+      <span class="nav-dot" style="background:#e67e22"></span>铝锭库存
+    </a>
+    <a href="#sec-cu" class="nav-item" data-section="cu">
+      <span class="nav-dot" style="background:#b87333"></span>电解铜价格
+    </a>
+    <a href="#sec-cuinv" class="nav-item" data-section="cuinv">
+      <span class="nav-dot" style="background:#a0522d"></span>电解铜库存
+    </a>
+    <a href="#sec-li" class="nav-item" data-section="li">
+      <span class="nav-dot" style="background:#1a7a4c"></span>碳酸锂现货
+    </a>
+    <a href="#sec-liw" class="nav-item" data-section="liw">
+      <span class="nav-dot" style="background:#2e8d5f"></span>碳酸锂仓单
+    </a>
+    <a href="#sec-gold" class="nav-item" data-section="gold">
+      <span class="nav-dot" style="background:#c9971a"></span>黄金储备
+    </a>
+    <a href="#sec-scfi" class="nav-item" data-section="scfi">
+      <span class="nav-dot" style="background:#0e7a8a"></span>集运运价 SCFI
+    </a>
+    <a href="#sec-cyp" class="nav-item" data-section="cyp">
+      <span class="nav-dot" style="background:#2980b9"></span>长电来水发电
+    </a>
+    <a href="#sec-tg" class="nav-item" data-section="tg">
+      <span class="nav-dot" style="background:#16a085"></span>三峡水库水位
+    </a>
+  </nav>
+</aside>
+
+<!-- 主内容 -->
+<div class="main-content">
+
+<div class="header">
+  <h1>ETF 份额追踪 · 沪深300 & 中证500</h1>
+  <div class="subtitle">上海证券交易所 · 基金规模（清算后数据）</div>
+  <div class="update-time" id="updateTime">加载中...</div>
+  <div class="data-note">
+    <div class="dn-title">数据更新说明</div>
+    <div class="dn-row">
+      <span class="dn-tag live"><span class="dot green"></span>实时公网源（akshare 公开接口 · 自动更新）</span>
+      <span class="dn-item">黄金储备</span>
+      <span class="dn-item">沪铜库存</span>
+      <span class="dn-item">铜价</span>
+      <span class="dn-item">锂价</span>
+      <span class="dn-item">铝价（期货主力≈现货）</span>
+    </div>
+    <div class="dn-row">
+      <span class="dn-tag frozen"><span class="dot gray"></span>历史定格（源站已锁 · 保留最后更新值 · 非实时）</span>
+      <span class="dn-item">沪深300/中证500 ETF份额 (10-21)</span>
+      <span class="dn-item">融资融券 (10-20)</span>
+      <span class="dn-item">煤炭价格 (10-21)</span>
+      <span class="dn-item">铝锭库存 (10-19)</span>
+      <span class="dn-item">铝仓单 (10-21)</span>
+      <span class="dn-item">锂仓单 (09-30)</span>
+      <span class="dn-item">SCFI 集运 (10-09)</span>
+      <span class="dn-item">长电发电 (2026Q3)</span>
+      <span class="dn-item">三峡水位</span>
+      <span class="dn-item">氧化铝</span>
+      <span class="dn-item">工厂库存 (10-15)</span>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 沪深300 区块 ====== -->
+<div class="section" id="sec-hs300">
+  <div class="section-title hs300">
+    沪深300 ETF
+    <span class="badge" id="hs300Count"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="hs300Cards"></div>
+    <div class="chart-row single">
+      <div class="chart-box">
+        <h3 id="hs300SharesTitle">总份额变化曲线</h3>
+        <div class="legend-note">
+          <span><span class="dot red"></span> 份额增加（涨）</span>
+          <span><span class="dot green"></span> 份额减少（跌）</span>
+        </div>
+        <canvas id="hs300SharesChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-box">
+        <h3 id="hs300DeltaTitle">每日份额变化量</h3>
+        <canvas id="hs300DeltaChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3 id="hs300DetailTitle">近10日份额变化</h3>
+        <canvas id="hs300DetailChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ====== 中证500 区块 ====== -->
+<div class="section" id="sec-zz500">
+  <div class="section-title zz500">
+    中证500 ETF
+    <span class="badge" id="zz500Count"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="zz500Cards"></div>
+    <div class="chart-row single">
+      <div class="chart-box">
+        <h3 id="zz500SharesTitle">总份额变化曲线</h3>
+        <div class="legend-note">
+          <span><span class="dot red"></span> 份额增加（涨）</span>
+          <span><span class="dot green"></span> 份额减少（跌）</span>
+        </div>
+        <canvas id="zz500SharesChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-box">
+        <h3 id="zz500DeltaTitle">每日份额变化量</h3>
+        <canvas id="zz500DeltaChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3 id="zz500DetailTitle">近10日份额变化</h3>
+        <canvas id="zz500DetailChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ====== 融资融券 区块 ====== -->
+<div class="section" id="sec-margin">
+  <div class="section-title margin">
+    融资融券 · 市场情绪
+    <span class="badge" id="marginCount"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="marginCards"></div>
+    <div class="chart-row single">
+      <div class="chart-box">
+        <h3>融资融券余额变化曲线</h3>
+        <div class="legend-note">
+          <span><span class="dot red"></span> 增加</span>
+          <span><span class="dot green"></span> 减少</span>
+        </div>
+        <canvas id="marginBalanceChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-box">
+        <h3>融券余量变化</h3>
+        <canvas id="marginShortChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>融资买入额 vs 偿还额</h3>
+        <canvas id="marginBuyChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ====== 煤炭价格 区块 ====== -->
+<div class="section" id="sec-coal">
+  <div class="section-title coal">
+    CCTD 环渤海动力煤现货参考价
+    <span class="badge" id="coalCount"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="coalCards"></div>
+    <div class="chart-row single">
+      <div class="chart-box">
+        <h3>动力煤现货参考价走势（元/吨）</h3>
+        <div class="legend-note">
+          <span><span class="dot red"></span> 价格上涨</span>
+          <span><span class="dot green"></span> 价格下跌</span>
+          <span style="margin-left:auto;color:#aaa">CCTD中国煤炭市场网</span>
+        </div>
+        <canvas id="coalPriceChart"></canvas>
+        <div class="range-slider">
+          <span class="range-cap">时间区间（拖两端缩放·拖中间平移）</span>
+          <div class="brush" id="coalRangeBrush">
+            <div class="brush-track"></div>
+            <div class="brush-selection"></div>
+            <div class="brush-handle brush-handle-left"></div>
+            <div class="brush-handle brush-handle-right"></div>
+          </div>
+          <span class="range-span" id="coalRangeSpan">全部</span>
+        </div>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-box">
+        <h3>Q5500K 每日价格变化（元/吨）</h3>
+        <canvas id="coalDeltaChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>近20日价格对比</h3>
+        <canvas id="coalRecentChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ~~~~~~~~~~~~~~~~~ 电解铝 & 氧化铝 ~~~~~~~~~~~~~~~~~ -->
+<div class="section" id="sec-alu">
+  <div class="section-title alu">
+    电解铝 & 氧化铝 · SMM价格
+    <span class="badge" id="aluCount"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="aluCards"></div>
+    <div class="chart-row">
+      <div class="chart-box">
+        <h3>A00铝 价格走势（元/吨）</h3>
+        <canvas id="aluChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>氧化铝(山西) 价格走势（元/吨）</h3>
+        <canvas id="aoChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-box">
+        <h3>电解铝 vs 氧化铝 价差</h3>
+        <canvas id="aluSpreadChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>价格对比（近20日）</h3>
+        <canvas id="aluRecentChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ~~~~~~~~~~~~~~~~~ 铝锭库存 ~~~~~~~~~~~~~~~~~ -->
+<div class="section" id="sec-inv">
+  <div class="section-title alu">
+    铝锭库存 · Mysteel 电解铝社会库存
+    <span class="badge" id="invCount"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="invCards"></div>
+    <div class="chart-row">
+      <div class="chart-box">
+        <h3>国内电解铝库存（万吨）</h3>
+        <div class="legend-note">
+          <span><span class="dot orange"></span> 社会库存</span>
+          <span><span class="dot purple"></span> 厂内库存</span>
+        </div>
+        <canvas id="invChart"></canvas>
+        <div class="range-slider">
+          <span class="range-cap">时间区间（拖两端缩放·拖中间平移）</span>
+          <div class="brush" id="invRangeBrush">
+            <div class="brush-track"></div>
+            <div class="brush-selection"></div>
+            <div class="brush-handle brush-handle-left"></div>
+            <div class="brush-handle brush-handle-right"></div>
+          </div>
+          <span class="range-span" id="invRangeSpan">全部</span>
+        </div>
+      </div>
+      <div class="chart-box">
+        <h3>沪铝期货仓单（万吨）</h3>
+        <canvas id="alwChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-row" style="margin-top:16px">
+      <div class="chart-box" style="flex: 1 1 100%;">
+        <h3>库存变化对比（近 20 期，万吨）</h3>
+        <canvas id="invChgChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ~~~~~~~~~~~~~~~~~ 电解铜价格 ~~~~~~~~~~~~~~~~~ -->
+<div class="section" id="sec-cu">
+  <div class="section-title cu-price">
+    电解铜 · SMM 1#电解铜价格
+    <span class="badge" id="cuCount"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="cuCards"></div>
+    <div class="chart-row">
+      <div class="chart-box" style="flex: 1 1 100%;">
+        <h3>电解铜价格走势（元/吨）</h3>
+        <canvas id="cuChart"></canvas>
+        <div class="range-slider">
+          <span class="range-cap">时间区间（拖两端缩放·拖中间平移）</span>
+          <div class="brush" id="cuRangeBrush">
+            <div class="brush-track"></div>
+            <div class="brush-selection"></div>
+            <div class="brush-handle brush-handle-left"></div>
+            <div class="brush-handle brush-handle-right"></div>
+          </div>
+          <span class="range-span" id="cuRangeSpan">全部</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ~~~~~~~~~~~~~~~~~ 电解铜库存 ~~~~~~~~~~~~~~~~~ -->
+<div class="section" id="sec-cuinv">
+  <div class="section-title cu-inv">
+    电解铜库存 · Mysteel 国内市场电解铜库存统计
+    <span class="badge" id="cuInvCount"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="cuInvCards"></div>
+    <div class="chart-row">
+      <div class="chart-box" style="flex: 1 1 100%;">
+        <h3>电解铜库存走势（吨）</h3>
+        <canvas id="cuInvChart"></canvas>
+        <div class="range-slider">
+          <span class="range-cap">时间区间（拖两端缩放·拖中间平移）</span>
+          <div class="brush" id="cuInvRangeBrush">
+            <div class="brush-track"></div>
+            <div class="brush-selection"></div>
+            <div class="brush-handle brush-handle-left"></div>
+            <div class="brush-handle brush-handle-right"></div>
+          </div>
+          <span class="range-span" id="cuInvRangeSpan">全部</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==== 碳酸锂现货 ==== -->
+<div class="section" id="sec-li">
+  <div class="section-title li">
+    碳酸锂现货 · 电池级碳酸锂早盘价（Mysteel MMLC）
+    <span class="badge" id="liCount"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="liCards"></div>
+    <div class="chart-row">
+      <div class="chart-box" style="flex: 1 1 100%;">
+        <h3>电池级碳酸锂价格走势（元/吨）</h3>
+        <canvas id="liChart"></canvas>
+        <div class="range-slider">
+          <span class="range-cap">时间区间（拖两端缩放·拖中间平移）</span>
+          <div class="brush" id="liRangeBrush">
+            <div class="brush-track"></div>
+            <div class="brush-selection"></div>
+            <div class="brush-handle brush-handle-left"></div>
+            <div class="brush-handle brush-handle-right"></div>
+          </div>
+          <span class="range-span" id="liRangeSpan">全部</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==== 碳酸锂期货仓单 ==== -->
+<div class="section" id="sec-liw">
+  <div class="section-title liw">
+    碳酸锂期货仓单 · 广期所 LC 主力合约
+    <span class="badge" id="liwCount"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="liwCards"></div>
+    <div class="chart-row single">
+      <div class="chart-box">
+        <h3>碳酸锂期货仓单走势（手）</h3>
+        <canvas id="liwChart"></canvas>
+        <div class="range-slider">
+          <span class="range-cap">时间区间（拖两端缩放·拖中间平移）</span>
+          <div class="brush" id="liwRangeBrush">
+            <div class="brush-track"></div>
+            <div class="brush-selection"></div>
+            <div class="brush-handle brush-handle-left"></div>
+            <div class="brush-handle brush-handle-right"></div>
+          </div>
+          <span class="range-span" id="liwRangeSpan">全部</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==== 黄金储备 ==== -->
+<div class="section" id="sec-gold">
+  <div class="section-title gold">
+    央行黄金储备 · 月度储备变化（国家外汇管理局）
+    <span class="badge" id="goldCount"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="goldCards"></div>
+    <div class="chart-row single">
+      <div class="chart-box">
+        <h3>黄金储备走势（万盎司 / 吨）</h3>
+        <canvas id="goldChart"></canvas>
+        <div class="range-slider">
+          <span class="range-cap">时间区间（拖两端缩放·拖中间平移）</span>
+          <div class="brush" id="goldRangeBrush">
+            <div class="brush-track"></div>
+            <div class="brush-selection"></div>
+            <div class="brush-handle brush-handle-left"></div>
+            <div class="brush-handle brush-handle-right"></div>
+          </div>
+          <span class="range-span" id="goldRangeSpan">全部</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==== 集运运价 SCFI ==== -->
+<div class="section" id="sec-scfi">
+  <div class="section-title scfi">
+    集运运价 · SCFI 出口集装箱运价指数
+    <span class="badge" id="scfiCount"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="scfiCards"></div>
+    <div class="chart-row single">
+      <div class="chart-box">
+        <h3>SCFI 综合指数走势（点）· CCFI 结算指数参照</h3>
+        <canvas id="scfiChart"></canvas>
+        <div class="range-slider">
+          <span class="range-cap">时间区间（拖两端缩放·拖中间平移）</span>
+          <div class="brush" id="scfiRangeBrush">
+            <div class="brush-track"></div>
+            <div class="brush-selection"></div>
+            <div class="brush-handle brush-handle-left"></div>
+            <div class="brush-handle brush-handle-right"></div>
+          </div>
+          <span class="range-span" id="scfiRangeSpan">全部</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ====== 长江电力季度来水 & 发电 ====== -->
+<div class="section" id="sec-cyp">
+  <div class="section-title cyp">
+    长江电力 · 季度来水与发电量完成情况
+    <span class="badge" id="cypCount"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="cypCards"></div>
+    <div style="margin: 0 8px 12px; padding: 10px 14px; background: #f8fafc; border-left: 3px solid #9b59b6; border-radius: 4px; color: #555; font-size: 13px; line-height: 1.5;">
+      <strong>口径说明：</strong>发电量柱状/折线均使用<strong>当季单季度值</strong>（半年度/年度公告行的单季值由累计值减上一累计口径反推得出，如 Q4 单季 = 全年 − 前三季度）；来水为公告原文披露的口径，可能是前三季度/半年度/年度累计或单季度。下表同时列出单季度与累计值，避免"第三季度"与"前三季度"混淆。
+    </div>
+    <div class="chart-row single">
+      <div class="chart-box">
+        <h3>三峡水库来水总量（亿立方米）</h3>
+        <span class="chart-tag cum">公告披露口径 · 多为累计值</span>
+        <canvas id="cypInflowChart"></canvas>
+        <div class="chart-caption">柱状图按公告原文口径展示，通常为前三季度/半年度/年度累计来水量，非单季度值。</div>
+      </div>
+      <div class="chart-box">
+        <h3>梯级电站总发电量（亿千瓦时）</h3>
+        <span class="chart-tag q">当季单季度值</span>
+        <canvas id="cypGenChart"></canvas>
+        <div class="chart-caption">柱状/折线均使用当季单季度发电量（半年度/年度公告行的单季值由累计减上一累计口径反推，如 Q4 单季 = 全年 − 前三季度）。</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ====== 三峡水库实时水位 ====== -->
+<div class="section" id="sec-tg">
+  <div class="section-title tg">
+    三峡水库 · 实时水位
+    <span class="badge" id="tgCount"></span>
+  </div>
+  <div class="section-body">
+    <div class="summary-row" id="tgCards"></div>
+    <div class="chart-row single">
+      <div class="chart-box">
+        <h3>三峡水库坝前水位（米）</h3>
+        <canvas id="tgLevelChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const ETF_INFO = {
+  // 沪深300
+  '510300': { name: '沪深300ETF华泰柏瑞', cat: 'hs300', color: '#e74c3c' },
+  '510310': { name: '沪深300ETF易方达', cat: 'hs300', color: '#3498db' },
+  '510320': { name: '沪深300ETF中金',   cat: 'hs300', color: '#f39c12' },
+  '510330': { name: '沪深300ETF华夏',   cat: 'hs300', color: '#2ecc71' },
+  '510350': { name: '沪深300ETF工银',   cat: 'hs300', color: '#9b59b6' },
+  // 中证500
+  '510500': { name: '中证500ETF南方',     cat: 'zz500', color: '#1abc9c' },
+  '510510': { name: '中证500ETF广发',     cat: 'zz500', color: '#e67e22' },
+  '510530': { name: '中证500ETF工银',     cat: 'zz500', color: '#34495e' },
+  '510550': { name: '中证500ETF方正富邦', cat: 'zz500', color: '#7f8c8d' },
+  '510560': { name: '中证500ETF国寿',     cat: 'zz500', color: '#d35400' },
+  '510570': { name: '中证500ETF兴业',     cat: 'zz500', color: '#16a085' },
+  '510580': { name: '中证500ETF易方达',   cat: 'zz500', color: '#27ae60' },
+  '510590': { name: '中证500ETF平安',     cat: 'zz500', color: '#8e44ad' },
+  '512500': { name: '中证500ETF华夏',     cat: 'zz500', color: '#2c3e50' },
+  '512510': { name: '中证500ETF华泰柏瑞', cat: 'zz500', color: '#c0392b' },
+};
+
+let charts = {};
+
+// 曲线图默认不画数据点圆点（hover 时才显示定位点）
+Chart.defaults.datasets.line.pointRadius = 0;
+Chart.defaults.datasets.line.pointHoverRadius = 4;
+Chart.defaults.datasets.line.pointHitRadius = 12;
+
+// ====== X 轴刻度优化：抽稀的同时，保证最后一个刻度始终是最新日期 ======
+// Chart.js 的 maxTicksLimit 等距取刻度，最新一天经常落在刻度之外。挂到各图表
+// x 轴的 afterBuildTicks 上重写刻度表：先按上限均匀抽稀，再把末位补上
+// （末位与前一列过近时去掉前一列，避免文字重叠）。autoSkip 关闭，避免二次抽稀。
+function finalTicks(axis) {
+  if (!axis.options.ticks) axis.options.ticks = {};
+  axis.options.ticks.autoSkip = false;
+  const labels = typeof axis.getLabels === 'function' ? axis.getLabels() : null;
+  const n = labels ? labels.length : 0;
+  if (n < 2) return;
+  const limit = (axis.options.ticks.maxTicksLimit) || 12;
+  const step = Math.max(1, Math.ceil(n / limit));
+  const idxs = [];
+  for (let i = 0; i < n - 1; i += step) idxs.push(i);
+  if (idxs[idxs.length - 1] !== n - 1) {
+    if (idxs.length && (n - 1) - idxs[idxs.length - 1] < step) {
+      idxs.pop();
+    }
+    idxs.push(n - 1);
+  }
+  axis.ticks = idxs.map(i => ({ value: i }));
+}
+
+// ====== 通用双端时间区间刷选条：拖动两端调长度(缩放)，拖动中间平移（替代滚轮缩放/单滑块） ======
+// brushId: 刷选条容器 <div class="brush"> 的 id（内含 .brush-track/.brush-selection/.brush-handle-left/.brush-handle-right）
+// spanId:  显示当前区间文字的 <span> id
+// allData: 该图表全量数据数组（含 .date 字段）
+// renderFn:渲染函数，接收「切片后的数据」并重建图表
+// opts:    { minVisible: 最小可见点数, unit: 单位文字 }
+let brushState = {};   // 记忆每个刷选条的选择区间，避免数据重载时重置
+function bindRangeBrush(brushId, spanId, allData, renderFn, opts) {
+  opts = opts || {};
+  const brush = document.getElementById(brushId);
+  const span = document.getElementById(spanId);
+  if (!brush) return;
+  const total = allData.length;
+  const minVisible = Math.max(1, Math.min(opts.minVisible || 20, total - 1));
+  if (total <= 1) { if (span) span.textContent = '数据不足'; return; }
+
+  // 恢复上次选择或默认全部
+  let state = brushState[brushId];
+  if (!state || state.end > total - 1) {
+    state = { start: 0, end: total - 1 };
+    brushState[brushId] = state;
+  }
+  if (state.end - state.start + 1 < minVisible) {
+    state.end = Math.min(total - 1, state.start + minVisible - 1);
+  }
+
+  const sel = brush.querySelector('.brush-selection');
+  const hl = brush.querySelector('.brush-handle-left');
+  const hr = brush.querySelector('.brush-handle-right');
+  const pct = i => (total > 1 ? (i / (total - 1)) * 100 : 0);
+
+  function layout() {
+    const l = pct(state.start), r = pct(state.end);
+    sel.style.left = l + '%';
+    sel.style.width = Math.max(0, r - l) + '%';
+    hl.style.left = l + '%';
+    hr.style.left = r + '%';
+  }
+  function apply() {
+    const sliced = allData.slice(state.start, state.end + 1);
+    renderFn(sliced);
+    if (span) {
+      const start = sliced.length ? sliced[0].date : '';
+      const end = sliced.length ? sliced[sliced.length - 1].date : '';
+      const unit = opts.unit || '个交易日';
+      span.textContent = '共 ' + sliced.length + ' ' + unit + ' · ' + start + ' ~ ' + end;
+    }
+  }
+  function fracFromX(clientX) {
+    const rect = brush.getBoundingClientRect();
+    let f = (clientX - rect.left) / rect.width;
+    return Math.max(0, Math.min(1, f));
+  }
+  function recenterTo(idx) {
+    const len = state.end - state.start;
+    let s = Math.max(0, Math.min(idx - Math.floor(len / 2), total - 1 - len));
+    state.start = s; state.end = s + len;
+  }
+  let drag = null;
+  function onDown(e) {
+    const f = fracFromX(e.clientX);
+    const idx = Math.round(f * (total - 1));
+    if (e.target === hl) drag = { type: 'left' };
+    else if (e.target === hr) drag = { type: 'right' };
+    else { recenterTo(idx); drag = { type: 'pan', grabIdx: idx }; }
+    layout(); apply();
+    e.preventDefault();
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+  function onMove(e) {
+    if (!drag) return;
+    const idx = Math.round(fracFromX(e.clientX) * (total - 1));
+    if (drag.type === 'left') {
+      state.start = Math.max(0, Math.min(idx, state.end - minVisible + 1));
+    } else if (drag.type === 'right') {
+      state.end = Math.min(total - 1, Math.max(idx, state.start + minVisible - 1));
+    } else {
+      const len = state.end - state.start;
+      const delta = idx - drag.grabIdx;
+      let s = Math.max(0, Math.min(state.start + delta, total - 1 - len));
+      state.start = s; state.end = s + len;
+    }
+    layout(); apply();
+  }
+  function onUp() {
+    drag = null;
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+  }
+  brush.onpointerdown = onDown;
+  layout(); apply();
+}
+let allGroups = {};
+let selectedCode = { hs300: null, zz500: null };
+let resizeTimer = null;
+
+function isMobile() {
+  return window.innerWidth <= 768;
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 5) continue;
+    const [date, code, name, shares, cat] = parts;
+    if (ETF_INFO[code]) {
+      result.push({ date, code, name, shares: parseFloat(shares), cat: ETF_INFO[code].cat });
+    }
+  }
+  return result;
+}
+
+function getCodesByCat(cat) {
+  return Object.keys(ETF_INFO).filter(c => ETF_INFO[c].cat === cat);
+}
+
+function groupByCode(data) {
+  const groups = {};
+  for (const r of data) {
+    if (!groups[r.code]) groups[r.code] = [];
+    groups[r.code].push(r);
+  }
+  for (const code of Object.keys(groups)) {
+    groups[code].sort((a, b) => a.date.localeCompare(b.date));
+  }
+  return groups;
+}
+
+function getAllDates(groups, codes) {
+  const dateSet = new Set();
+  for (const code of codes) {
+    if (groups[code]) for (const r of groups[code]) dateSet.add(r.date);
+  }
+  return Array.from(dateSet).sort();
+}
+
+function getSharesForCode(groups, dates, code) {
+  const data = groups[code] || [];
+  const map = {};
+  for (const r of data) map[r.date] = r.shares;
+  return dates.map(d => map[d] !== undefined ? map[d] : null);
+}
+
+function getDeltasForCode(groups, dates, code) {
+  const shares = getSharesForCode(groups, dates, code);
+  const deltas = [];
+  for (let i = 0; i < dates.length; i++) {
+    if (i === 0 || shares[i - 1] === null || shares[i] === null) {
+      deltas.push(null);
+    } else {
+      deltas.push(shares[i] - shares[i - 1]);
+    }
+  }
+  return deltas;
+}
+
+function destroyChart(name) {
+  if (charts[name]) { charts[name].destroy(); delete charts[name]; }
+}
+
+function renderCards(groups, dates, codes, containerId, cat) {
+  const latest = dates[dates.length - 1];
+  const prev = dates.length > 1 ? dates[dates.length - 2] : null;
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  for (const code of codes) {
+    const info = ETF_INFO[code];
+    const data = groups[code] || [];
+    const latestData = data.find(r => r.date === latest);
+    if (!latestData) continue;
+    let changeHtml = '';
+    if (prev) {
+      const prevData = data.find(r => r.date === prev);
+      if (prevData) {
+        const delta = latestData.shares - prevData.shares;
+        const pct = ((delta / prevData.shares) * 100).toFixed(2);
+        const cls = delta >= 0 ? 'up' : 'down';
+        const sign = delta >= 0 ? '+' : '';
+        changeHtml = `<div class="change ${cls}">${sign}${(delta/10000).toFixed(2)}亿 (${sign}${pct}%)</div>`;
+      }
+    }
+    const isSelected = selectedCode[cat] === code;
+    container.innerHTML += `
+      <div class="card ${cat} ${isSelected ? 'selected' : ''}" data-code="${code}" data-cat="${cat}">
+        <div class="label">${info.name} · ${code}</div>
+        <div class="value">${(latestData.shares / 10000).toFixed(2)} 亿份</div>
+        ${changeHtml}
+      </div>`;
+  }
+  // 绑定点击事件
+  container.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => {
+      const code = card.dataset.code;
+      const cat = card.dataset.cat;
+      if (selectedCode[cat] === code) return;
+      selectedCode[cat] = code;
+      // 更新卡片高亮
+      container.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      // 重绘图表
+      const codes = getCodesByCat(cat);
+      const dates2 = getAllDates(groups, codes);
+      // PC端总份额图显示全部，不随卡片切换；手机端切换单条
+      if (isMobile()) {
+        renderSharesChart(groups, dates2, code, cat + 'SharesChart', cat);
+      }
+      renderDeltaChart(groups, dates2, code, cat + 'DeltaChart');
+      renderDetailChart(groups, dates2, code, cat + 'DetailChart');
+      // 更新表格高亮
+      const tableId = cat + 'Table';
+      document.querySelectorAll('#' + tableId + ' tbody tr').forEach(tr => {
+        tr.classList.toggle('selected-row', tr.dataset.code === code);
+      });
+    });
+  });
+}
+
+function renderSharesChart(groups, dates, code, canvasId, cat) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const info = ETF_INFO[code];
+  const shares = getSharesForCode(groups, dates, code);
+  const deltas = getDeltasForCode(groups, dates, code);
+
+  const pointColors = dates.map((_, i) => {
+    if (i === 0 || deltas[i] === null) return info.color;
+    return deltas[i] >= 0 ? '#e74c3c' : '#27ae60';
+  });
+
+  // 更新标题
+  const titleEl = document.getElementById(cat + 'SharesTitle');
+  if (titleEl) titleEl.innerHTML = `总份额变化曲线 — <span class="selected-name">${info.name}</span>`;
+
+  charts[canvasId] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: info.name,
+        data: shares.map(v => v !== null ? v / 10000 : null),
+        borderColor: info.color,
+        backgroundColor: info.color + '15',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointColors,
+        tension: 0.3,
+        fill: true,
+        spanGaps: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const val = ctx.parsed.y;
+              const idx = ctx.dataIndex;
+              let deltaInfo = '';
+              if (idx > 0 && deltas[idx] !== null) {
+                const sign = deltas[idx] >= 0 ? '+' : '';
+                deltaInfo = ` (较前日 ${sign}${(deltas[idx]/10000).toFixed(2)}亿)`;
+              }
+              return `${info.name}: ${val.toFixed(2)} 亿份${deltaInfo}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxTicksLimit: 12, font: { size: 10 } } },
+        y: {
+          ticks: {
+            callback: v => v.toFixed(1) + '亿',
+            font: { size: 10 },
+            maxTicksLimit: 8
+          }
+        }
+      }
+    }
+  });
+}
+
+// PC端：所有ETF多条曲线画在一张图上
+function renderSharesChartMulti(groups, dates, codes, canvasId, cat) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId).getContext('2d');
+
+  const titleEl = document.getElementById(cat + 'SharesTitle');
+  if (titleEl) titleEl.innerHTML = '总份额变化曲线（全部）';
+
+  const datasets = [];
+  for (const code of codes) {
+    const info = ETF_INFO[code];
+    if (!groups[code] || groups[code].length === 0) continue;
+    const shares = getSharesForCode(groups, dates, code);
+    datasets.push({
+      label: info.name + ' ' + code,
+      data: shares.map(v => v !== null ? v / 10000 : null),
+      borderColor: info.color,
+      backgroundColor: info.color + '10',
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 5,
+      tension: 0.3,
+      fill: false,
+      spanGaps: false,
+    });
+  }
+
+  charts[canvasId] = new Chart(ctx, {
+    type: 'line',
+    data: { labels: dates, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { font: { size: 11 }, boxWidth: 12, padding: 8 }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const ds = datasets[ctx.datasetIndex];
+              const val = ctx.parsed.y;
+              if (val === null) return null;
+              return `${ds.label}: ${val.toFixed(2)} 亿份`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxTicksLimit: 12, font: { size: 10 } } },
+        y: {
+          ticks: {
+            callback: v => v.toFixed(1) + '亿',
+            font: { size: 10 },
+            maxTicksLimit: 8
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderDeltaChart(groups, dates, code, canvasId) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const info = ETF_INFO[code];
+  const deltas = getDeltasForCode(groups, dates, code);
+
+  const titleEl = document.getElementById(canvasId.replace('Chart', 'Title'));
+  if (titleEl) titleEl.innerHTML = `每日份额变化量 — <span class="selected-name">${info.name}</span>`;
+
+  // 柱状图：涨红跌绿
+  const barColors = deltas.map(d => {
+    if (d === null) return '#ccc';
+    return d >= 0 ? '#e74c3c' : '#27ae60';
+  });
+
+  charts[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: info.name,
+        data: deltas,
+        backgroundColor: barColors.map(c => c + '80'),
+        borderColor: barColors,
+        borderWidth: 1,
+        borderRadius: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if (v === null) return '无数据';
+              const sign = v >= 0 ? '+' : '';
+              return `${info.name}: ${sign}${v.toFixed(2)} 万份`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxTicksLimit: 12, font: { size: 10 } } },
+        y: { ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function renderDetailChart(groups, dates, code, canvasId) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const info = ETF_INFO[code];
+  const recentDates = dates.slice(-10);
+  const shares = getSharesForCode(groups, recentDates, code);
+
+  const titleEl = document.getElementById(canvasId.replace('Chart', 'Title'));
+  if (titleEl) titleEl.innerHTML = `近10日份额变化 — <span class="selected-name">${info.name}</span>`;
+
+  charts[canvasId] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: recentDates,
+      datasets: [{
+        label: info.name,
+        data: shares.map(v => v !== null ? v / 10000 : null),
+        borderColor: info.color,
+        backgroundColor: info.color + '20',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        pointHoverRadius: 7,
+        tension: 0.3,
+        fill: true,
+        spanGaps: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `${info.name}: ${ctx.parsed.y.toFixed(2)} 亿份` } }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { font: { size: 10 } } },
+        y: { ticks: { callback: v => v.toFixed(1) + '亿', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function renderTable(groups, dates, codes, tableId, cat) {
+  const tbody = document.querySelector('#' + tableId + ' tbody');
+  const latest = dates[dates.length - 1];
+  const prev = dates.length > 1 ? dates[dates.length - 2] : null;
+  tbody.innerHTML = '';
+  for (const code of codes) {
+    const info = ETF_INFO[code];
+    const data = groups[code] || [];
+    const latestData = data.find(r => r.date === latest);
+    if (!latestData) continue;
+    let deltaStr = '-', pctStr = '-', rowClass = '';
+    if (prev) {
+      const prevData = data.find(r => r.date === prev);
+      if (prevData) {
+        const delta = latestData.shares - prevData.shares;
+        const pct = ((delta / prevData.shares) * 100).toFixed(2);
+        const sign = delta >= 0 ? '+' : '';
+        deltaStr = sign + delta.toFixed(2);
+        pctStr = sign + pct + '%';
+        rowClass = delta >= 0 ? 'up' : 'down';
+      }
+    }
+    const isSelected = selectedCode[cat] === code;
+    tbody.innerHTML += `
+      <tr class="${rowClass} ${isSelected ? 'selected-row' : ''}" data-code="${code}">
+        <td>${latestData.date}</td>
+        <td>${info.name}</td>
+        <td>${code}</td>
+        <td>${latestData.shares.toFixed(2)}</td>
+        <td>${deltaStr}</td>
+        <td>${pctStr}</td>
+      </tr>`;
+  }
+}
+
+function renderCategory(groups, cat, ids) {
+  const codes = getCodesByCat(cat);
+  const dates = getAllDates(groups, codes);
+  if (dates.length === 0) return;
+
+  // 默认选第一只有数据的
+  if (!selectedCode[cat] || !groups[selectedCode[cat]]) {
+    selectedCode[cat] = codes.find(c => groups[c] && groups[c].length > 0) || codes[0];
+  }
+
+  document.getElementById(ids.count).textContent = codes.length + ' 只 · ' + dates.length + ' 个交易日 · ' + dates[dates.length - 1];
+  renderCards(groups, dates, codes, ids.cards, cat);
+
+  // PC端：多条曲线一起显示；手机端：只显示选中的单条
+  if (isMobile()) {
+    renderSharesChart(groups, dates, selectedCode[cat], ids.shares, cat);
+  } else {
+    renderSharesChartMulti(groups, dates, codes, ids.shares, cat);
+  }
+  renderDeltaChart(groups, dates, selectedCode[cat], ids.delta);
+  renderDetailChart(groups, dates, selectedCode[cat], ids.detail);
+}
+
+function render(data) {
+  allGroups = groupByCode(data);
+  const allDates = getAllDates(allGroups, Object.keys(ETF_INFO));
+  if (allDates.length === 0) {
+    document.getElementById('updateTime').textContent = '暂无数据';
+    return;
+  }
+  document.getElementById('updateTime').textContent =
+    '数据更新: ' + allDates[allDates.length - 1] + '（共 ' + allDates.length + ' 个交易日）';
+
+  renderCategory(allGroups, 'hs300', {
+    cards: 'hs300Cards', shares: 'hs300SharesChart', delta: 'hs300DeltaChart',
+    detail: 'hs300DetailChart', table: 'hs300Table', count: 'hs300Count'
+  });
+  renderCategory(allGroups, 'zz500', {
+    cards: 'zz500Cards', shares: 'zz500SharesChart', delta: 'zz500DeltaChart',
+    detail: 'zz500DetailChart', table: 'zz500Table', count: 'zz500Count'
+  });
+}
+
+async function loadCSV() {
+  try {
+    const resp = await fetch('hs300_etf_shares.csv?_=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const data = parseCSV(text);
+      if (data.length > 0) { render(data); return; }
+    }
+  } catch (e) { console.warn('CSV 加载失败:', e); }
+  document.getElementById('updateTime').textContent = '数据加载失败，请先运行 fetch_etf_data.py';
+}
+
+// 窗口大小变化时重新渲染（PC/手机切换图表模式）
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!allGroups || Object.keys(allGroups).length === 0) return;
+    render(Object.values(allGroups).flat());
+  }, 300);
+});
+
+// ====== 融资融券数据 ======
+
+function parseMarginCSV(text) {
+  const lines = text.trim().split('\n');
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 8) continue;
+    result.push({
+      date: parts[0],
+      rzye: parseFloat(parts[1]),      // 融资余额(亿)
+      rzmre: parseFloat(parts[2]),      // 融资买入额(亿)
+      rzche: parseFloat(parts[3]),      // 融资偿还额(亿)
+      rqyl: parseFloat(parts[4]),       // 融券余量(亿股)
+      rqylje: parseFloat(parts[5]),     // 融券余量金额(亿)
+      rqmcl: parseFloat(parts[6]),      // 融券卖出量(万股)
+      rzrqjyzl: parseFloat(parts[7]),   // 融资融券余额(亿)
+    });
+  }
+  result.sort((a, b) => a.date.localeCompare(b.date));
+  return result;
+}
+
+function renderMarginCards(data) {
+  const container = document.getElementById('marginCards');
+  const latest = data[data.length - 1];
+  const prev = data.length > 1 ? data[data.length - 2] : null;
+  container.innerHTML = '';
+
+  const items = [
+    { label: '融资余额', val: latest.rzye, unit: '亿', prev: prev ? prev.rzye : null, color: '#1a5276' },
+    { label: '融资买入额', val: latest.rzmre, unit: '亿', prev: prev ? prev.rzmre : null, color: '#2980b9' },
+    { label: '融资偿还额', val: latest.rzche, unit: '亿', prev: prev ? prev.rzche : null, color: '#5dade2' },
+    { label: '融券余量', val: latest.rqyl, unit: '亿股', prev: prev ? prev.rqyl : null, color: '#c0392b' },
+    { label: '融券余量金额', val: latest.rqylje, unit: '亿', prev: prev ? prev.rqylje : null, color: '#e74c3c' },
+    { label: '融资融券余额', val: latest.rzrqjyzl, unit: '亿', prev: prev ? prev.rzrqjyzl : null, color: '#8e44ad' },
+  ];
+
+  for (const item of items) {
+    let changeHtml = '';
+    if (item.prev !== null) {
+      const delta = item.val - item.prev;
+      const pct = ((delta / item.prev) * 100).toFixed(2);
+      const cls = delta >= 0 ? 'up' : 'down';
+      const sign = delta >= 0 ? '+' : '';
+      changeHtml = `<div class="change ${cls}">${sign}${delta.toFixed(2)} (${sign}${pct}%)</div>`;
+    }
+    container.innerHTML += `
+      <div class="card margin">
+        <div class="label">${item.label}</div>
+        <div class="value" style="border-left:3px solid ${item.color};padding-left:8px;">${item.val.toFixed(2)} ${item.unit}</div>
+        ${changeHtml}
+      </div>`;
+  }
+}
+
+function renderMarginBalanceChart(data) {
+  destroyChart('marginBalanceChart');
+  const ctx = document.getElementById('marginBalanceChart').getContext('2d');
+  const dates = data.map(d => d.date);
+  const rzye = data.map(d => d.rzye);
+  const rzrqjyzl = data.map(d => d.rzrqjyzl);
+
+  // 计算融资余额变化量用于着色
+  const rzyeDeltas = dates.map((_, i) => {
+    if (i === 0) return 0;
+    return rzye[i] - rzye[i - 1];
+  });
+
+  const pointColors = dates.map((_, i) => {
+    if (i === 0) return '#1a5276';
+    return rzyeDeltas[i] >= 0 ? '#e74c3c' : '#27ae60';
+  });
+
+  charts['marginBalanceChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [
+        {
+          label: '融资余额(亿)',
+          data: rzye,
+          borderColor: '#1a5276',
+          backgroundColor: '#1a527615',
+          borderWidth: 2.5,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          pointBackgroundColor: pointColors,
+          pointBorderColor: pointColors,
+          tension: 0.3,
+          fill: true,
+          yAxisID: 'y',
+        },
+        {
+          label: '融资融券余额(亿)',
+          data: rzrqjyzl,
+          borderColor: '#8e44ad',
+          backgroundColor: '#8e44ad10',
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          tension: 0.3,
+          fill: false,
+          borderDash: [5, 3],
+          yAxisID: 'y',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const idx = ctx.dataIndex;
+              const ds = ctx.dataset;
+              let deltaInfo = '';
+              if (idx > 0 && ctx.datasetIndex === 0) {
+                const delta = rzye[idx] - rzye[idx - 1];
+                const sign = delta >= 0 ? '+' : '';
+                deltaInfo = ` (较前日 ${sign}${delta.toFixed(2)}亿)`;
+              }
+              return `${ds.label}: ${ctx.parsed.y.toFixed(2)} 亿${deltaInfo}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxTicksLimit: 12, font: { size: 10 } } },
+        y: { ticks: { callback: v => v.toFixed(0) + '亿', font: { size: 10 }, maxTicksLimit: 8 } }
+      }
+    }
+  });
+}
+
+function renderMarginShortChart(data) {
+  destroyChart('marginShortChart');
+  const ctx = document.getElementById('marginShortChart').getContext('2d');
+  const dates = data.map(d => d.date);
+  const rqyl = data.map(d => d.rqyl);
+
+  const deltas = dates.map((_, i) => {
+    if (i === 0) return 0;
+    return rqyl[i] - rqyl[i - 1];
+  });
+  const pointColors = dates.map((_, i) => {
+    if (i === 0) return '#c0392b';
+    return deltas[i] >= 0 ? '#e74c3c' : '#27ae60';
+  });
+
+  charts['marginShortChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: '融券余量(亿股)',
+        data: rqyl,
+        borderColor: '#c0392b',
+        backgroundColor: '#c0392b15',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointColors,
+        tension: 0.3,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const idx = ctx.dataIndex;
+              let deltaInfo = '';
+              if (idx > 0) {
+                const delta = rqyl[idx] - rqyl[idx - 1];
+                const sign = delta >= 0 ? '+' : '';
+                deltaInfo = ` (较前日 ${sign}${delta.toFixed(4)}亿股)`;
+              }
+              return `融券余量: ${ctx.parsed.y.toFixed(4)} 亿股${deltaInfo}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxTicksLimit: 12, font: { size: 10 } } },
+        y: { ticks: { callback: v => v.toFixed(2) + '亿股', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function renderMarginBuyChart(data) {
+  destroyChart('marginBuyChart');
+  const ctx = document.getElementById('marginBuyChart').getContext('2d');
+  const dates = data.map(d => d.date);
+  const rzmre = data.map(d => d.rzmre);
+  const rzche = data.map(d => d.rzche);
+
+  charts['marginBuyChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dates,
+      datasets: [
+        {
+          label: '融资买入额(亿)',
+          data: rzmre,
+          backgroundColor: '#2980b980',
+          borderColor: '#2980b9',
+          borderWidth: 1,
+          borderRadius: 2,
+        },
+        {
+          label: '融资偿还额(亿)',
+          data: rzche,
+          backgroundColor: '#e67e2280',
+          borderColor: '#e67e22',
+          borderWidth: 1,
+          borderRadius: 2,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} 亿` } }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxTicksLimit: 12, font: { size: 10 } } },
+        y: { ticks: { callback: v => v.toFixed(0) + '亿', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function renderMarginTable(data) {
+  const tbody = document.querySelector('#marginTable tbody');
+  tbody.innerHTML = '';
+  // 最近 20 条，倒序
+  const recent = data.slice(-20).reverse();
+  for (const r of recent) {
+    const prevIdx = data.findIndex(d => d.date === r.date) - 1;
+    const prev = prevIdx >= 0 ? data[prevIdx] : null;
+    let rzyeClass = '';
+    if (prev) {
+      rzyeClass = r.rzye >= prev.rzye ? 'up' : 'down';
+    }
+    tbody.innerHTML += `
+      <tr class="${rzyeClass}">
+        <td>${r.date}</td>
+        <td>${r.rzye.toFixed(2)}</td>
+        <td>${r.rzmre.toFixed(2)}</td>
+        <td>${r.rzche.toFixed(2)}</td>
+        <td>${r.rqyl.toFixed(4)}</td>
+        <td>${r.rzrqjyzl.toFixed(2)}</td>
+      </tr>`;
+  }
+}
+
+function renderMargin(data) {
+  if (data.length === 0) {
+    document.getElementById('marginCount').textContent = '暂无数据';
+    return;
+  }
+  document.getElementById('marginCount').textContent = data.length + ' 个交易日';
+  renderMarginCards(data);
+  renderMarginBalanceChart(data);
+  renderMarginShortChart(data);
+  renderMarginBuyChart(data);
+}
+
+async function loadMarginCSV() {
+  try {
+    const resp = await fetch('margin_data.csv?_=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const data = parseMarginCSV(text);
+      if (data.length > 0) { renderMargin(data); return; }
+    }
+  } catch (e) { console.warn('margin CSV 加载失败:', e); }
+}
+
+loadCSV();
+loadMarginCSV();
+
+// ====== 电解铝 & 氧化铝 价格 (SMM) ======
+function parseAluCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',');
+  const data = [];
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i].split(',');
+    if (vals.length < headers.length) continue;
+    const d = {};
+    for (let j = 0; j < headers.length; j++) d[headers[j].trim()] = vals[j].trim();
+    data.push(d);
+  }
+  return data;
+}
+
+function renderAluCards(data) {
+  const latest = data[data.length - 1];
+  const prev = data.length > 1 ? data[data.length - 2] : null;
+  const items = [
+    { label: 'A00铝均价', val: parseFloat(latest.al_avg) || 0, prev: prev ? (parseFloat(prev.al_avg) || 0) : null, color: '#e67e22', unit: '元/吨' },
+    { label: 'A00铝涨跌', val: parseFloat(latest.al_change) || 0, prev: null, color: '#d35400', unit: '元/吨', isDelta: true },
+    { label: '氧化铝均价', val: parseFloat(latest.ao_avg) || 0, prev: prev ? (parseFloat(prev.ao_avg) || 0) : null, color: '#2980b9', unit: '元/吨' },
+    { label: '氧化铝涨跌', val: parseFloat(latest.ao_change) || 0, prev: null, color: '#1a5276', unit: '元/吨', isDelta: true },
+    { label: '铝-氧化铝价差', val: (parseFloat(latest.al_avg) || 0) - (parseFloat(latest.ao_avg) || 0), prev: prev ? ((parseFloat(prev.al_avg) || 0) - (parseFloat(prev.ao_avg) || 0)) : null, color: '#2c3e50', unit: '元/吨' },
+  ];
+  const container = document.getElementById('aluCards');
+  container.innerHTML = '';
+  for (const item of items) {
+    let deltaStr = '';
+    if (item.prev !== null && item.prev !== undefined) {
+      const delta = item.val - item.prev;
+      const sign = delta >= 0 ? '+' : '';
+      const cls = delta >= 0 ? 'up' : 'down';
+      deltaStr = `<span class="delta ${cls}">${sign}${delta.toFixed(0)}</span>`;
+    }
+    const display = item.isDelta
+      ? `<span style="color:${item.val>=0?'#e74c3c':'#27ae60'};font-size:18px">${item.val>=0?'+':''}${item.val.toFixed(0)} ${item.unit}</span>`
+      : `<span class="value">${item.val.toFixed(0)}</span><span class="unit">${item.unit}</span>`;
+    container.innerHTML += `
+      <div class="card alu">
+        <div class="label">${item.label}</div>
+        ${display}
+        ${deltaStr}
+      </div>`;
+  }
+}
+
+function renderAluChart(data) {
+  destroyChart('aluChart');
+  const ctx = document.getElementById('aluChart').getContext('2d');
+  const dates = data.map(d => d.date);
+  const alAvg = data.map(d => parseFloat(d.al_avg) || null);
+  const alMin = data.map(d => parseFloat(d.al_min) || null);
+  const alMax = data.map(d => parseFloat(d.al_max) || null);
+  const pointColors = dates.map((_, i) => {
+    if (i === 0 || alAvg[i] === null || alAvg[i - 1] === null) return '#d35400';
+    return alAvg[i] >= alAvg[i - 1] ? '#e74c3c' : '#27ae60';
+  });
+  charts['aluChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [
+        { label: '均价', data: alAvg, borderColor: '#d35400', backgroundColor: '#d3540010', borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 5, pointBackgroundColor: pointColors, pointBorderColor: pointColors, tension: 0.3, fill: false, spanGaps: true },
+        { label: '最低价', data: alMin, borderColor: '#e67e2240', backgroundColor: 'transparent', borderWidth: 1, pointRadius: 0, borderDash: [4, 2], tension: 0.3, fill: false, spanGaps: true },
+        { label: '最高价', data: alMax, borderColor: '#e67e2240', backgroundColor: 'transparent', borderWidth: 1, pointRadius: 0, borderDash: [4, 2], tension: 0.3, fill: false, spanGaps: true },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 10 }, boxWidth: 12, padding: 6 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if (v === null) return null;
+              if (ctx.datasetIndex === 0 && ctx.dataIndex > 0 && alAvg[ctx.dataIndex - 1] !== null && alAvg[ctx.dataIndex] !== null) {
+                const d = alAvg[ctx.dataIndex] - alAvg[ctx.dataIndex - 1];
+                return `${ctx.dataset.label}: ${v.toFixed(0)} 元/吨 (${d >= 0 ? '+' : ''}${d.toFixed(0)})`;
+              }
+              return `${ctx.dataset.label}: ${v.toFixed(0)} 元/吨`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxTicksLimit: 10, font: { size: 9 } } },
+        y: { ticks: { callback: v => v.toFixed(0), font: { size: 9 } } }
+      }
+    }
+  });
+}
+
+function renderAoChart(data) {
+  destroyChart('aoChart');
+  const ctx = document.getElementById('aoChart').getContext('2d');
+  const dates = data.map(d => d.date);
+  const aoAvg = data.map(d => parseFloat(d.ao_avg) || null);
+  const aoMin = data.map(d => parseFloat(d.ao_min) || null);
+  const aoMax = data.map(d => parseFloat(d.ao_max) || null);
+  const pointColors = dates.map((_, i) => {
+    if (i === 0 || aoAvg[i] === null || aoAvg[i - 1] === null) return '#2980b9';
+    return aoAvg[i] >= aoAvg[i - 1] ? '#e74c3c' : '#27ae60';
+  });
+  charts['aoChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [
+        { label: '均价', data: aoAvg, borderColor: '#2980b9', backgroundColor: '#2980b910', borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 5, pointBackgroundColor: pointColors, pointBorderColor: pointColors, tension: 0.3, fill: false, spanGaps: true },
+        { label: '最低价', data: aoMin, borderColor: '#3498db40', backgroundColor: 'transparent', borderWidth: 1, pointRadius: 0, borderDash: [4, 2], tension: 0.3, fill: false, spanGaps: true },
+        { label: '最高价', data: aoMax, borderColor: '#3498db40', backgroundColor: 'transparent', borderWidth: 1, pointRadius: 0, borderDash: [4, 2], tension: 0.3, fill: false, spanGaps: true },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 10 }, boxWidth: 12, padding: 6 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if (v === null) return null;
+              return `${ctx.dataset.label}: ${v.toFixed(0)} 元/吨`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxTicksLimit: 10, font: { size: 9 } } },
+        y: { ticks: { callback: v => v.toFixed(0), font: { size: 9 } } }
+      }
+    }
+  });
+}
+
+function renderAluSpreadChart(data) {
+  destroyChart('aluSpreadChart');
+  const ctx = document.getElementById('aluSpreadChart').getContext('2d');
+  const dates = data.map(d => d.date);
+  const spread = data.map(d => {
+    const al = parseFloat(d.al_avg) || 0;
+    const ao = parseFloat(d.ao_avg) || 0;
+    return al && ao ? al - ao : null;
+  });
+  charts['aluSpreadChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: '价差 (A00铝 - 氧化铝)',
+        data: spread,
+        backgroundColor: ctx => {
+          const v = ctx.raw;
+          return v === null ? 'transparent' : v >= 0 ? '#e74c3c80' : '#27ae6080';
+        },
+        borderColor: ctx => {
+          const v = ctx.raw;
+          return v === null ? 'transparent' : v >= 0 ? '#e74c3c' : '#27ae60';
+        },
+        borderWidth: 0.5
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if (v === null) return '无数据';
+              return `价差: ${v.toFixed(0)} 元/吨`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxTicksLimit: 10, font: { size: 9 } } },
+        y: { ticks: { callback: v => v.toFixed(0), font: { size: 9 } } }
+      }
+    }
+  });
+}
+
+function renderAluRecentChart(data) {
+  destroyChart('aluRecentChart');
+  const ctx = document.getElementById('aluRecentChart').getContext('2d');
+  const recent = data.slice(-20);
+  charts['aluRecentChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: recent.map(d => d.date),
+      datasets: [
+        { label: 'A00铝', data: recent.map(d => parseFloat(d.al_avg) || null), borderColor: '#d35400', borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 7, tension: 0.3, fill: false, spanGaps: true, yAxisID: 'y' },
+        { label: '氧化铝', data: recent.map(d => parseFloat(d.ao_avg) || null), borderColor: '#2980b9', borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 7, tension: 0.3, fill: false, spanGaps: true, yAxisID: 'y1' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 10 }, boxWidth: 12, padding: 6 } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(0)} 元/吨` } }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { font: { size: 9 } } },
+        y: { position: 'left', title: { display: true, text: 'A00铝(元/吨)', font: { size: 9 } }, ticks: { font: { size: 9 }, callback: v => (v / 1000).toFixed(1) + 'k' }, grid: { color: '#d3540030' } },
+        y1: { position: 'right', title: { display: true, text: '氧化铝(元/吨)', font: { size: 9 } }, ticks: { font: { size: 9 } }, grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+}
+
+function renderAluTable(data) {
+  const tbody = document.querySelector('#aluTable tbody');
+  tbody.innerHTML = '';
+  const recent = data.slice(-20).reverse();
+  for (let i = 0; i < recent.length; i++) {
+    const r = recent[i];
+    const al = parseFloat(r.al_avg) || 0;
+    const ao = parseFloat(r.ao_avg) || 0;
+    const alChg = parseFloat(r.al_change) || '-';
+    const aoChg = parseFloat(r.ao_change) || '-';
+    const spread = al && ao ? al - ao : '-';
+    const alChgCls = typeof alChg === 'number' ? (alChg >= 0 ? 'up' : 'down') : '';
+    const aoChgCls = typeof aoChg === 'number' ? (aoChg >= 0 ? 'up' : 'down') : '';
+    tbody.innerHTML += `<tr>
+      <td>${r.date}</td>
+      <td>${al.toFixed(0)}</td>
+      <td class="${alChgCls}">${typeof alChg === 'number' ? (alChg >= 0 ? '+' : '') + alChg.toFixed(0) : '-'}</td>
+      <td>${ao.toFixed(0)}</td>
+      <td class="${aoChgCls}">${typeof aoChg === 'number' ? (aoChg >= 0 ? '+' : '') + aoChg.toFixed(0) : '-'}</td>
+      <td>${typeof spread === 'number' ? spread.toFixed(0) : '-'}</td>
+    </tr>`;
+  }
+}
+
+function renderAlu(data) {
+  if (data.length === 0) {
+    document.getElementById('aluCount').textContent = '暂无数据';
+    return;
+  }
+  document.getElementById('aluCount').textContent = data.length + ' 个交易日 · ' + data[0].date + ' ~ ' + data[data.length - 1].date;
+  renderAluCards(data);
+  renderAluChart(data);
+  renderAoChart(data);
+  renderAluSpreadChart(data);
+  renderAluRecentChart(data);
+}
+
+async function loadAluCSV() {
+  try {
+    const resp = await fetch('aluminum.csv?_=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const data = parseAluCSV(text);
+      if (data.length > 0) { renderAlu(data); return; }
+    }
+  } catch (e) { console.warn('aluminum CSV 加载失败:', e); }
+}
+
+
+
+function parseCoalCSV(text) {
+  const lines = text.trim().split('\n');
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 4) continue;
+    result.push({
+      date: parts[0],
+      q5500: parts[1] ? parseFloat(parts[1]) : null,
+      q5000: parts[2] ? parseFloat(parts[2]) : null,
+      q4500: parts[3] ? parseFloat(parts[3]) : null,
+    });
+  }
+  result.sort((a, b) => a.date.localeCompare(b.date));
+  return result;
+}
+
+function renderCoalCards(data) {
+  const container = document.getElementById('coalCards');
+  const latest = data[data.length - 1];
+  const prev = data.length > 1 ? data[data.length - 2] : null;
+  container.innerHTML = '';
+
+  const items = [
+    { label: 'Q5500K 动力煤', val: latest.q5500, prev: prev ? prev.q5500 : null, color: '#e74c3c' },
+    { label: 'Q5000K 动力煤', val: latest.q5000, prev: prev ? prev.q5000 : null, color: '#f39c12' },
+    { label: 'Q4500K 动力煤', val: latest.q4500, prev: prev ? prev.q4500 : null, color: '#2ecc71' },
+  ];
+
+  for (const item of items) {
+    if (item.val === null || isNaN(item.val)) continue;
+    let changeHtml = '';
+    if (item.prev !== null && !isNaN(item.prev)) {
+      const delta = item.val - item.prev;
+      const pct = ((delta / item.prev) * 100).toFixed(2);
+      const cls = delta >= 0 ? 'up' : 'down';
+      const sign = delta >= 0 ? '+' : '';
+      changeHtml = `<div class="change ${cls}">${sign}${delta.toFixed(0)} 元/吨 (${sign}${pct}%)</div>`;
+    }
+    container.innerHTML += `
+      <div class="card coal">
+        <div class="label">${item.label}</div>
+        <div class="value" style="border-left:3px solid ${item.color};padding-left:8px;">${item.val.toFixed(0)} <span style="font-size:12px;color:#888">元/吨</span></div>
+        ${changeHtml}
+      </div>`;
+  }
+}
+
+function renderCoalPriceChart(data) {
+  destroyChart('coalPriceChart');
+  const ctx = document.getElementById('coalPriceChart').getContext('2d');
+  const dates = data.map(d => d.date);
+  const q5500 = data.map(d => d.q5500);
+  const q5000 = data.map(d => d.q5000);
+  const q4500 = data.map(d => d.q4500);
+
+  // Q5500K 点颜色：涨红跌绿
+  const pointColors = dates.map((_, i) => {
+    if (i === 0 || q5500[i] === null || q5500[i-1] === null) return '#e74c3c';
+    return q5500[i] >= q5500[i-1] ? '#e74c3c' : '#27ae60';
+  });
+
+  const datasets = [
+    {
+      label: 'Q5500K (5500大卡)',
+      data: q5500,
+      borderColor: '#e74c3c',
+      backgroundColor: '#e74c3c10',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      pointHoverRadius: 6,
+      pointBackgroundColor: pointColors,
+      pointBorderColor: pointColors,
+      tension: 0.3,
+      fill: false,
+      spanGaps: true,
+    },
+    {
+      label: 'Q5000K (5000大卡)',
+      data: q5000,
+      borderColor: '#f39c12',
+      backgroundColor: '#f39c1210',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      pointHoverRadius: 5,
+      tension: 0.3,
+      fill: false,
+      spanGaps: true,
+    },
+    {
+      label: 'Q4500K (4500大卡)',
+      data: q4500,
+      borderColor: '#2ecc71',
+      backgroundColor: '#2ecc7110',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      pointHoverRadius: 5,
+      tension: 0.3,
+      fill: false,
+      spanGaps: true,
+    },
+  ];
+
+  charts['coalPriceChart'] = new Chart(ctx, {
+    type: 'line',
+    data: { labels: dates, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const val = ctx.parsed.y;
+              if (val === null) return null;
+              const idx = ctx.dataIndex;
+              let deltaInfo = '';
+              if (ctx.datasetIndex === 0 && idx > 0 && q5500[idx-1] !== null) {
+                const delta = q5500[idx] - q5500[idx-1];
+                const sign = delta >= 0 ? '+' : '';
+                deltaInfo = ` (较前日 ${sign}${delta.toFixed(0)}元)`;
+              }
+              return `${ctx.dataset.label}: ${val.toFixed(0)} 元/吨${deltaInfo}`;
+            }
+          }
+        },
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxTicksLimit: 12, font: { size: 10 } } },
+        y: { ticks: { callback: v => v + '元', font: { size: 10 }, maxTicksLimit: 8 } }
+      }
+    }
+  });
+}
+
+function renderCoalDeltaChart(data) {
+  destroyChart('coalDeltaChart');
+  const ctx = document.getElementById('coalDeltaChart').getContext('2d');
+  // 只取最近60天
+  const recent = data.slice(-60);
+  const dates = recent.map(d => d.date);
+  const deltas = recent.map((d, i) => {
+    if (i === 0) return null;
+    if (d.q5500 === null || recent[i-1].q5500 === null) return null;
+    return d.q5500 - recent[i-1].q5500;
+  });
+
+  const barColors = deltas.map(d => {
+    if (d === null) return '#ccc';
+    return d >= 0 ? '#e74c3c' : '#27ae60';
+  });
+
+  charts['coalDeltaChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: 'Q5500K 价格变化',
+        data: deltas,
+        backgroundColor: barColors.map(c => c + '80'),
+        borderColor: barColors,
+        borderWidth: 1,
+        borderRadius: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if (v === null) return '无数据';
+              const sign = v >= 0 ? '+' : '';
+              return `Q5500K: ${sign}${v.toFixed(0)} 元/吨`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxTicksLimit: 12, font: { size: 10 } } },
+        y: { ticks: { callback: v => (v >= 0 ? '+' : '') + v + '元', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function renderCoalRecentChart(data) {
+  destroyChart('coalRecentChart');
+  const ctx = document.getElementById('coalRecentChart').getContext('2d');
+  const recent = data.slice(-20);
+  const dates = recent.map(d => d.date);
+
+  charts['coalRecentChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [
+        { label: 'Q5500K', data: recent.map(d => d.q5500), borderColor: '#e74c3c', backgroundColor: '#e74c3c20', borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 7, tension: 0.3, fill: true, spanGaps: true },
+        { label: 'Q5000K', data: recent.map(d => d.q5000), borderColor: '#f39c12', backgroundColor: '#f39c1220', borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 6, tension: 0.3, fill: false, spanGaps: true },
+        { label: 'Q4500K', data: recent.map(d => d.q4500), borderColor: '#2ecc71', backgroundColor: '#2ecc7120', borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 6, tension: 0.3, fill: false, spanGaps: true },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(0) : 'N/A'} 元/吨` } }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { font: { size: 10 } } },
+        y: { ticks: { callback: v => v + '元', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function renderCoalTable(data) {
+  const tbody = document.querySelector('#coalTable tbody');
+  tbody.innerHTML = '';
+  const recent = data.slice(-20).reverse();
+  for (let i = 0; i < recent.length; i++) {
+    const r = recent[i];
+    const prevIdx = data.length - 1 - i;
+    const prev = prevIdx > 0 ? data[prevIdx - 1] : null;
+    let deltaStr = '-', pctStr = '-', rowClass = '';
+    if (prev && r.q5500 !== null && prev.q5500 !== null) {
+      const delta = r.q5500 - prev.q5500;
+      const pct = ((delta / prev.q5500) * 100).toFixed(2);
+      const sign = delta >= 0 ? '+' : '';
+      deltaStr = sign + delta.toFixed(0);
+      pctStr = sign + pct + '%';
+      rowClass = delta >= 0 ? 'up' : 'down';
+    }
+    tbody.innerHTML += `
+      <tr class="${rowClass}">
+        <td>${r.date}</td>
+        <td>${r.q5500 !== null ? r.q5500.toFixed(0) : '-'}</td>
+        <td>${r.q5000 !== null ? r.q5000.toFixed(0) : '-'}</td>
+        <td>${r.q4500 !== null ? r.q4500.toFixed(0) : '-'}</td>
+        <td>${deltaStr}</td>
+        <td>${pctStr}</td>
+      </tr>`;
+  }
+}
+
+let allCoalData = [];
+
+function renderCoal(data) {
+  if (data.length === 0) {
+    document.getElementById('coalCount').textContent = '暂无数据';
+    return;
+  }
+  allCoalData = data;
+  document.getElementById('coalCount').textContent = data.length + ' 个交易日 · ' + data[0].date + ' ~ ' + data[data.length-1].date;
+  renderCoalCards(data);
+  // 主图按滑块选择的时间区间渲染，其余图保持全量
+  bindRangeBrush('coalRangeBrush', 'coalRangeSpan', allCoalData, renderCoalPriceChart, { minVisible: 30, unit: '个交易日' });
+  renderCoalDeltaChart(data);
+  renderCoalRecentChart(data);
+}
+
+async function loadCoalCSV() {
+  try {
+    const resp = await fetch('coal_data.csv?_=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const data = parseCoalCSV(text);
+      if (data.length > 0) { renderCoal(data); return; }
+    }
+  } catch (e) { console.warn('coal CSV 加载失败:', e); }
+}
+
+// ====== 铝锭库存 (SMM) ======
+
+function parseInvCSV(text) {
+  const lines = text.trim().split('\n');
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 2) continue;
+    result.push({ date: parts[0], inventory: parseFloat(parts[1]) });
+  }
+  result.sort((a, b) => a.date.localeCompare(b.date));
+  return result;
+}
+
+function renderInvCards(data) {
+  const latest = data[data.length - 1];
+  const prev = data.length > 1 ? data[data.length - 2] : null;
+  const delta = prev ? (latest.inventory - prev.inventory) : 0;
+  const deltaPct = prev ? ((delta / prev.inventory) * 100).toFixed(1) : '0.0';
+  const maxInv = Math.max(...data.map(d => d.inventory));
+  const minInv = Math.min(...data.map(d => d.inventory));
+  const avgInv = (data.reduce((s, d) => s + d.inventory, 0) / data.length).toFixed(1);
+
+  const color = delta >= 0 ? '#e74c3c' : '#2ecc71';
+  const sign = delta >= 0 ? '+' : '';
+  const html = `
+    <div class="card alu">
+      <div class="label">最新库存</div>
+      <div class="value">${latest.inventory.toFixed(1)} <span class="unit">万吨</span></div>
+      <div class="sub">${latest.date}</div>
+    </div>
+    <div class="card alu">
+      <div class="label">较上期变化</div>
+      <div class="value" style="color:${color}">${sign}${delta.toFixed(1)} <span class="unit">万吨</span></div>
+      <div class="sub" style="color:${color}">${sign}${deltaPct}%</div>
+    </div>
+    <div class="card alu">
+      <div class="label">区间最高</div>
+      <div class="value">${maxInv.toFixed(1)} <span class="unit">万吨</span></div>
+      <div class="sub">${data.find(d => d.inventory === maxInv).date}</div>
+    </div>
+    <div class="card alu">
+      <div class="label">区间最低</div>
+      <div class="value">${minInv.toFixed(1)} <span class="unit">万吨</span></div>
+      <div class="sub">${data.find(d => d.inventory === minInv).date}</div>
+    </div>
+    <div class="card alu">
+      <div class="label">区间均值</div>
+      <div class="value">${avgInv} <span class="unit">万吨</span></div>
+      <div class="sub">${data.length} 个数据点</div>
+    </div>
+  `;
+  document.getElementById('invCards').innerHTML = html;
+}
+
+let allInvData = [];
+let allFactoryData = [];   // 电解铝厂内库存（Mysteel，周度）
+let allAlwData = [];       // 沪铝期货仓单（上期所，日度）
+
+function renderInvChart(data) {
+  const canvas = document.getElementById('invChart');
+  if (!canvas) return;
+  if (charts.invChart) charts.invChart.destroy();
+
+  const labels = data.map(d => d.date);
+  const inv = data.map(d => d.inventory);
+
+  // 厂内库存按日期对齐到社会库存序列（厂内为周度，缺失处留空由 spanGaps 跳过）
+  const fmap = new Map(allFactoryData.map(d => [d.date, d.inventory]));
+  const factory = labels.map(l => (fmap.has(l) ? fmap.get(l) : null));
+
+  // 计算变化量颜色
+  const pointColors = inv.map((v, i) => i > 0 ? (v >= inv[i - 1] ? '#e74c3c' : '#2ecc71') : '#e67e22');
+
+  charts.invChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '社会库存（万吨）',
+        data: inv,
+        borderColor: '#e67e22',
+        backgroundColor: 'rgba(230, 126, 34, 0.1)',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointColors,
+        tension: 0.3,
+        fill: true,
+        spanGaps: true,
+      }, {
+        label: '厂内库存（万吨）',
+        data: factory,
+        borderColor: '#9b59b6',
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderDash: [5, 3],
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointBackgroundColor: '#9b59b6',
+        pointBorderColor: '#9b59b6',
+        tension: 0.3,
+        fill: false,
+        spanGaps: true,
+        yAxisID: 'y1',
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const val = ctx.parsed.y;
+              const idx = ctx.dataIndex;
+              let deltaInfo = '';
+              if (idx > 0) {
+                const delta = inv[idx] - inv[idx - 1];
+                const sign = delta >= 0 ? '+' : '';
+                const color = delta >= 0 ? '增库' : '去库';
+                deltaInfo = ` (${color} ${sign}${delta.toFixed(1)}万吨)`;
+              }
+              return `${ctx.dataset.label}: ${val.toFixed(1)} 万吨${deltaInfo}`;
+            }
+          }
+        },
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxRotation: 45, minRotation: 0, font: { size: 10 } }, grid: { display: false } },
+        y: { title: { display: true, text: '社会库存 万吨' }, ticks: { font: { size: 11 } }, grid: { color: 'rgba(128,128,128,0.1)' } },
+        y1: {
+          position: 'right',
+          title: { display: true, text: '厂内库存 万吨' },
+          ticks: { font: { size: 11 } },
+          grid: { display: false },
+        },
+      },
+    },
+  });
+}
+
+// 沪铝期货仓单（上期所注册仓单，日度）
+function renderAlwChart() {
+  const canvas = document.getElementById('alwChart');
+  if (!canvas || allAlwData.length === 0) return;
+  if (charts.alwChart) charts.alwChart.destroy();
+
+  const data = allAlwData.slice(-60);
+  const labels = data.map(d => d.date);
+  const vals = data.map(d => d.warrants);
+  const latest = vals[vals.length - 1];
+  const prev = vals.length > 1 ? vals[vals.length - 2] : latest;
+  const color = latest >= prev ? '#e74c3c' : '#27ae60';
+
+  charts.alwChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '沪铝仓单（吨）',
+        data: vals,
+        borderColor: color,
+        backgroundColor: color === '#e74c3c' ? 'rgba(231,76,60,0.10)' : 'rgba(46,204,113,0.10)',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        tension: 0.3,
+        fill: true,
+        spanGaps: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const idx = ctx.dataIndex;
+              let extra = '';
+              const d = data[idx];
+              if (idx > 0 && d.change !== null && d.change !== undefined) {
+                extra = `（${d.change >= 0 ? '+' : ''}${d.change}）`;
+              }
+              return `沪铝仓单: ${ctx.parsed.y.toLocaleString()} 吨${extra}`;
+            }
+          }
+        },
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxRotation: 45, minRotation: 0, font: { size: 10 } }, grid: { display: false } },
+        y: { title: { display: true, text: '吨' }, ticks: { font: { size: 11 }, callback: v => v.toLocaleString() }, grid: { color: 'rgba(128,128,128,0.1)' } },
+      },
+    },
+  });
+}
+
+// 库存变化对比：社会库存变化（周度）+ 沪铝仓单变化（日度），近 20 期
+function renderInvChgChart() {
+  const canvas = document.getElementById('invChgChart');
+  if (!canvas) return;
+  if (charts.invChgChart) charts.invChgChart.destroy();
+
+  const labels = [];
+  const invChg = [];
+  const inv = allInvData.slice(-20);
+  for (let i = 1; i < inv.length; i++) {
+    labels.push(inv[i].date);
+    invChg.push(+(inv[i].inventory - inv[i - 1].inventory).toFixed(1));
+  }
+
+  // 仓单变化按日期归并（社会库存为周度，取窗口内仓单变化之和）
+  const wmap = new Map(allAlwData.map(d => [d.date, d.change || 0]));
+  const wChg = labels.map(l => (wmap.has(l) ? +(wmap.get(l) / 10000).toFixed(2) : 0));
+
+  charts.invChgChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: '社会库存变化（万吨）', data: invChg, backgroundColor: '#e67e2299', borderWidth: 0 },
+        { label: '沪铝仓单变化（万吨）', data: wChg, backgroundColor: '#3498db99', borderWidth: 0 },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxRotation: 45, minRotation: 0, font: { size: 10 } }, grid: { display: false } },
+        y: { title: { display: true, text: '万吨' }, ticks: { font: { size: 11 } }, grid: { color: 'rgba(128,128,128,0.1)' } },
+      },
+    },
+  });
+}
+
+function renderInvTable(data) {
+  const tbody = document.querySelector('#invTable tbody');
+  if (!tbody) return;
+  const recent = data.slice(-20).reverse();
+  tbody.innerHTML = recent.map((d, i) => {
+    const realIdx = data.length - 1 - i;
+    const prev = realIdx > 0 ? data[realIdx - 1] : null;
+    const delta = prev ? (d.inventory - prev.inventory) : 0;
+    const pct = prev ? ((delta / prev.inventory) * 100).toFixed(1) : '0.0';
+    const color = delta >= 0 ? '#e74c3c' : '#2ecc71';
+    const sign = delta >= 0 ? '+' : '';
+    return `<tr>
+      <td>${d.date}</td>
+      <td>${d.inventory.toFixed(1)}</td>
+      <td style="color:${color}">${prev ? sign + delta.toFixed(1) : '-'}</td>
+      <td style="color:${color}">${prev ? sign + pct + '%' : '-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderInv(data) {
+  if (data.length === 0) {
+    document.getElementById('invCount').textContent = '暂无数据';
+    return;
+  }
+  allInvData = data;
+  const fact = allFactoryData.length
+    ? ` · 厂内库存 ${allFactoryData[allFactoryData.length - 1].inventory.toFixed(1)} 万吨（${allFactoryData[allFactoryData.length - 1].date}）`
+    : '';
+  document.getElementById('invCount').textContent = data.length + ' 个数据点 · ' + data[0].date + ' ~ ' + data[data.length - 1].date + fact;
+  renderInvCards(data);
+  renderInvChgChart();
+  bindRangeBrush('invRangeBrush', 'invRangeSpan', allInvData, renderInvChart, { minVisible: 30, unit: '个交易日' });
+}
+
+function parseFactoryCSV(text) {
+  const lines = text.trim().split('\n');
+  const out = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',');
+    if (cols.length < 2 || !cols[0]) continue;
+    const v = parseFloat(cols[1]);
+    if (!isNaN(v)) out.push({ date: cols[0], inventory: v });
+  }
+  return out.sort((a, b) => a.date < b.date ? -1 : 1);
+}
+
+function parseAlwCSV(text) {
+  const lines = text.trim().split('\n');
+  const out = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',');
+    if (cols.length < 2 || !cols[0]) continue;
+    const v = parseFloat(cols[1]);
+    if (!isNaN(v)) out.push({ date: cols[0], warrants: v, change: cols[2] === '' ? null : parseFloat(cols[2]) });
+  }
+  return out.sort((a, b) => a.date < b.date ? -1 : 1);
+}
+
+async function loadFactoryCSV() {
+  try {
+    const resp = await fetch('factory_inventory.csv?_=' + Date.now());
+    if (resp.ok) {
+      const data = parseFactoryCSV(await resp.text());
+      if (data.length) {
+        allFactoryData = data;
+        if (allInvData.length) {
+          renderInv(allInvData);
+        }
+      }
+    }
+  } catch (e) { console.warn('factory_inventory CSV 加载失败:', e); }
+}
+
+async function loadAlwCSV() {
+  try {
+    const resp = await fetch('aluminum_warrants.csv?_=' + Date.now());
+    if (resp.ok) {
+      const data = parseAlwCSV(await resp.text());
+      if (data.length) {
+        allAlwData = data;
+        renderAlwChart();
+        renderInvChgChart();
+      }
+    }
+  } catch (e) { console.warn('aluminum_warrants CSV 加载失败:', e); }
+}
+
+async function loadInvCSV() {
+  try {
+    const resp = await fetch('inventory.csv?_=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const data = parseInvCSV(text);
+      if (data.length > 0) { renderInv(data); return; }
+    }
+  } catch (e) { console.warn('inventory CSV 加载失败:', e); }
+}
+
+loadCoalCSV();
+loadAluCSV();
+loadInvCSV();
+loadFactoryCSV();
+loadAlwCSV();
+
+// ====== 电解铜价格 (SMM) ======
+
+function parseCuCSV(text) {
+  const lines = text.trim().split('\n');
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 5) continue;
+    result.push({
+      date: parts[0],
+      cu_avg: parseFloat(parts[1]),
+      cu_min: parseFloat(parts[2]),
+      cu_max: parseFloat(parts[3]),
+      cu_change: parseFloat(parts[4]),
+    });
+  }
+  result.sort((a, b) => a.date.localeCompare(b.date));
+  return result;
+}
+
+function renderCuCards(data) {
+  const latest = data[data.length - 1];
+  const prev = data.length > 1 ? data[data.length - 2] : null;
+  const delta = prev ? latest.cu_change : 0;
+  const deltaPct = prev ? ((delta / prev.cu_avg) * 100).toFixed(2) : '0.00';
+  const maxPrice = Math.max(...data.map(d => d.cu_avg));
+  const minPrice = Math.min(...data.map(d => d.cu_avg));
+  const avgPrice = (data.reduce((s, d) => s + d.cu_avg, 0) / data.length).toFixed(0);
+
+  const color = delta >= 0 ? '#e74c3c' : '#2ecc71';
+  const sign = delta >= 0 ? '+' : '';
+  const html = `
+    <div class="card cu-price">
+      <div class="label">最新均价</div>
+      <div class="value">${latest.cu_avg.toFixed(0)} <span class="unit">元/吨</span></div>
+      <div class="sub">${latest.date}</div>
+    </div>
+    <div class="card cu-price">
+      <div class="label">较前日涨跌</div>
+      <div class="value" style="color:${color}">${sign}${delta.toFixed(0)} <span class="unit">元/吨</span></div>
+      <div class="sub" style="color:${color}">${sign}${deltaPct}%</div>
+    </div>
+    <div class="card cu-price">
+      <div class="label">区间最高</div>
+      <div class="value">${maxPrice.toFixed(0)} <span class="unit">元/吨</span></div>
+      <div class="sub">${data.find(d => d.cu_avg === maxPrice).date}</div>
+    </div>
+    <div class="card cu-price">
+      <div class="label">区间最低</div>
+      <div class="value">${minPrice.toFixed(0)} <span class="unit">元/吨</span></div>
+      <div class="sub">${data.find(d => d.cu_avg === minPrice).date}</div>
+    </div>
+    <div class="card cu-price">
+      <div class="label">区间均价</div>
+      <div class="value">${avgPrice} <span class="unit">元/吨</span></div>
+      <div class="sub">${data.length} 个数据点</div>
+    </div>
+  `;
+  document.getElementById('cuCards').innerHTML = html;
+}
+
+let allCuData = [];
+
+function renderCuChart(data) {
+  const canvas = document.getElementById('cuChart');
+  if (!canvas) return;
+  if (charts.cuChart) charts.cuChart.destroy();
+
+  const labels = data.map(d => d.date);
+  const prices = data.map(d => d.cu_avg);
+  const changes = data.map(d => d.cu_change);
+  const pointColors = changes.map((v, i) => i > 0 ? (v >= 0 ? '#e74c3c' : '#2ecc71') : '#b87333');
+
+  charts.cuChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '电解铜均价（元/吨）',
+        data: prices,
+        borderColor: '#b87333',
+        backgroundColor: 'rgba(184, 115, 51, 0.1)',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointColors,
+        tension: 0.3,
+        fill: true,
+        spanGaps: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const val = ctx.parsed.y;
+              const idx = ctx.dataIndex;
+              let chgInfo = '';
+              if (idx > 0) {
+                const chg = changes[idx];
+                const sign = chg >= 0 ? '+' : '';
+                chgInfo = ` (${sign}${chg.toFixed(0)})`;
+              }
+              return `${ctx.dataset.label}: ${val.toFixed(0)} 元/吨${chgInfo}`;
+            }
+          }
+        },
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxRotation: 45, minRotation: 0, font: { size: 10 } }, grid: { display: false } },
+        y: { title: { display: true, text: '元/吨' }, ticks: { font: { size: 11 } }, grid: { color: 'rgba(128,128,128,0.1)' } },
+      },
+    },
+  });
+}
+
+function renderCuTable(data) {
+  const tbody = document.querySelector('#cuTable tbody');
+  if (!tbody) return;
+  const recent = data.slice(-20).reverse();
+  tbody.innerHTML = recent.map((d, i) => {
+    const realIdx = data.length - 1 - i;
+    const prev = realIdx > 0 ? data[realIdx - 1] : null;
+    const delta = prev ? d.cu_change : 0;
+    const pct = prev ? ((delta / prev.cu_avg) * 100).toFixed(2) : '0.00';
+    const color = delta >= 0 ? '#e74c3c' : '#2ecc71';
+    const sign = delta >= 0 ? '+' : '';
+    return `<tr>
+      <td>${d.date}</td>
+      <td>${d.cu_avg.toFixed(0)}</td>
+      <td style="color:${color}">${prev ? sign + delta.toFixed(0) : '-'}</td>
+      <td style="color:${color}">${prev ? sign + pct + '%' : '-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCu(data) {
+  if (data.length === 0) {
+    document.getElementById('cuCount').textContent = '暂无数据';
+    return;
+  }
+  allCuData = data;
+  document.getElementById('cuCount').textContent = data.length + ' 个数据点 · ' + data[0].date + ' ~ ' + data[data.length - 1].date;
+  renderCuCards(data);
+  bindRangeBrush('cuRangeBrush', 'cuRangeSpan', allCuData, renderCuChart, { minVisible: 30, unit: '个交易日' });
+}
+
+async function loadCuCSV() {
+  try {
+    const resp = await fetch('copper.csv?_=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const data = parseCuCSV(text);
+      if (data.length > 0) { renderCu(data); return; }
+    }
+  } catch (e) { console.warn('copper CSV 加载失败:', e); }
+}
+
+// ====== 电解铜库存 (Mysteel) ======
+
+function parseCuInvCSV(text) {
+  const lines = text.trim().split('\n');
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 2) continue;
+    result.push({
+      date: parts[0],
+      inventory: parseFloat(parts[1]),
+      change: parts.length > 2 ? parseFloat(parts[2]) : 0,
+    });
+  }
+  result.sort((a, b) => a.date.localeCompare(b.date));
+  return result;
+}
+
+function renderCuInvCards(data) {
+  const latest = data[data.length - 1];
+  const prev = data.length > 1 ? data[data.length - 2] : null;
+  const delta = prev ? (latest.inventory - prev.inventory) : 0;
+  const deltaPct = prev ? ((delta / prev.inventory) * 100).toFixed(1) : '0.0';
+  const maxInv = Math.max(...data.map(d => d.inventory));
+  const minInv = Math.min(...data.map(d => d.inventory));
+  const avgInv = (data.reduce((s, d) => s + d.inventory, 0) / data.length).toFixed(0);
+
+  const color = delta >= 0 ? '#e74c3c' : '#2ecc71';
+  const sign = delta >= 0 ? '+' : '';
+  const fmtNum = n => n >= 10000 ? (n / 10000).toFixed(1) + '万' : n;
+  const html = `
+    <div class="card cu-inv">
+      <div class="label">最新库存</div>
+      <div class="value">${latest.inventory.toFixed(0)} <span class="unit">吨</span></div>
+      <div class="sub">${latest.date}</div>
+    </div>
+    <div class="card cu-inv">
+      <div class="label">较上期变化</div>
+      <div class="value" style="color:${color}">${sign}${delta.toFixed(0)} <span class="unit">吨</span></div>
+      <div class="sub" style="color:${color}">${sign}${deltaPct}%</div>
+    </div>
+    <div class="card cu-inv">
+      <div class="label">区间最高</div>
+      <div class="value">${fmtNum(maxInv)} <span class="unit">吨</span></div>
+      <div class="sub">${data.find(d => d.inventory === maxInv).date}</div>
+    </div>
+    <div class="card cu-inv">
+      <div class="label">区间最低</div>
+      <div class="value">${fmtNum(minInv)} <span class="unit">吨</span></div>
+      <div class="sub">${data.find(d => d.inventory === minInv).date}</div>
+    </div>
+    <div class="card cu-inv">
+      <div class="label">区间均值</div>
+      <div class="value">${fmtNum(parseInt(avgInv))} <span class="unit">吨</span></div>
+      <div class="sub">${data.length} 个数据点</div>
+    </div>
+  `;
+  document.getElementById('cuInvCards').innerHTML = html;
+}
+
+let allCuInvData = [];
+
+function renderCuInvChart(data) {
+  const canvas = document.getElementById('cuInvChart');
+  if (!canvas) return;
+  if (charts.cuInvChart) charts.cuInvChart.destroy();
+
+  const labels = data.map(d => d.date);
+  const inv = data.map(d => d.inventory);
+
+  // 计算变化量颜色：增仓红，去仓绿
+  const pointColors = inv.map((v, i) => i > 0 ? (v >= inv[i - 1] ? '#e74c3c' : '#2ecc71') : '#a0522d');
+
+  charts.cuInvChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '电解铜库存（吨）',
+        data: inv,
+        borderColor: '#a0522d',
+        backgroundColor: 'rgba(160, 82, 45, 0.1)',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointColors,
+        tension: 0.3,
+        fill: true,
+        spanGaps: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const val = ctx.parsed.y;
+              const idx = ctx.dataIndex;
+              let deltaInfo = '';
+              if (idx > 0) {
+                const delta = inv[idx] - inv[idx - 1];
+                const sign = delta >= 0 ? '+' : '';
+                const tag = delta >= 0 ? '增仓' : '去仓';
+                deltaInfo = ` (${tag} ${sign}${delta.toFixed(0)}吨)`;
+              }
+              return `${ctx.dataset.label}: ${val.toFixed(0)} 吨${deltaInfo}`;
+            }
+          }
+        },
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxRotation: 45, minRotation: 0, font: { size: 10 } }, grid: { display: false } },
+        y: { title: { display: true, text: '吨' }, ticks: { font: { size: 11 } }, grid: { color: 'rgba(128,128,128,0.1)' } },
+      },
+    },
+  });
+}
+
+function renderCuInvTable(data) {
+  const tbody = document.querySelector('#cuInvTable tbody');
+  if (!tbody) return;
+  const recent = data.slice(-20).reverse();
+  tbody.innerHTML = recent.map((d, i) => {
+    const realIdx = data.length - 1 - i;
+    const prev = realIdx > 0 ? data[realIdx - 1] : null;
+    const delta = prev ? (d.inventory - prev.inventory) : 0;
+    const pct = prev ? ((delta / prev.inventory) * 100).toFixed(1) : '0.0';
+    const color = delta >= 0 ? '#e74c3c' : '#2ecc71';
+    const sign = delta >= 0 ? '+' : '';
+    return `<tr>
+      <td>${d.date}</td>
+      <td>${d.inventory.toFixed(0)}</td>
+      <td style="color:${color}">${prev ? sign + delta.toFixed(0) : '-'}</td>
+      <td style="color:${color}">${prev ? sign + pct + '%' : '-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCuInv(data) {
+  if (data.length === 0) {
+    document.getElementById('cuInvCount').textContent = '暂无数据';
+    return;
+  }
+  allCuInvData = data;
+  document.getElementById('cuInvCount').textContent = data.length + ' 个数据点 · ' + data[0].date + ' ~ ' + data[data.length - 1].date;
+  renderCuInvCards(data);
+  bindRangeBrush('cuInvRangeBrush', 'cuInvRangeSpan', allCuInvData, renderCuInvChart, { minVisible: 30, unit: '个交易日' });
+}
+
+async function loadCuInvCSV() {
+  try {
+    const resp = await fetch('copper_inventory.csv?_=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const data = parseCuInvCSV(text);
+      if (data.length > 0) { renderCuInv(data); return; }
+    }
+  } catch (e) { console.warn('copper_inventory CSV 加载失败:', e); }
+}
+
+// ====== 碳酸锂 ======
+
+function parseLiCSV(text) {
+  const lines = text.trim().split('\n');
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 2) continue;
+    result.push({
+      date: parts[0],
+      price: parseFloat(parts[1]),
+    });
+  }
+  result.sort((a, b) => a.date.localeCompare(b.date));
+  return result;
+}
+
+function renderLiCards(data) {
+  const latest = data[data.length - 1];
+  const prev = data.length > 1 ? data[data.length - 2] : null;
+  const delta = prev ? (latest.price - prev.price) : 0;
+  const deltaPct = prev ? ((delta / prev.price) * 100).toFixed(1) : '0.0';
+  const maxPrice = Math.max(...data.map(d => d.price));
+  const minPrice = Math.min(...data.map(d => d.price));
+  const avgPrice = Math.round(data.reduce((s, d) => s + d.price, 0) / data.length);
+
+  const color = delta >= 0 ? '#e74c3c' : '#2ecc71';
+  const sign = delta >= 0 ? '+' : '';
+  const fmtNum = n => {
+    if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+    return n.toLocaleString('zh-CN');
+  };
+  const html = `
+    <div class="card li">
+      <div class="label">最新早盘价格</div>
+      <div class="value">${latest.price.toLocaleString('zh-CN')} <span class="unit">元/吨</span></div>
+      <div class="sub">${latest.date}</div>
+    </div>
+    <div class="card li">
+      <div class="label">较上期变化</div>
+      <div class="value" style="color:${color}">${sign}${delta.toLocaleString('zh-CN')} <span class="unit">元/吨</span></div>
+      <div class="sub" style="color:${color}">${sign}${deltaPct}%</div>
+    </div>
+    <div class="card li">
+      <div class="label">区间最高</div>
+      <div class="value">${fmtNum(maxPrice)} <span class="unit">元/吨</span></div>
+      <div class="sub">${data.find(d => d.price === maxPrice).date}</div>
+    </div>
+    <div class="card li">
+      <div class="label">区间最低</div>
+      <div class="value">${fmtNum(minPrice)} <span class="unit">元/吨</span></div>
+      <div class="sub">${data.find(d => d.price === minPrice).date}</div>
+    </div>
+    <div class="card li">
+      <div class="label">区间均值</div>
+      <div class="value">${fmtNum(avgPrice)} <span class="unit">元/吨</span></div>
+      <div class="sub">${data.length} 个数据点</div>
+    </div>
+  `;
+  document.getElementById('liCards').innerHTML = html;
+}
+
+let allLiData = [];
+
+function renderLiChart(data) {
+  const canvas = document.getElementById('liChart');
+  if (!canvas) return;
+  if (charts.liChart) charts.liChart.destroy();
+
+  const labels = data.map(d => d.date);
+  const prices = data.map(d => d.price);
+  const pointColors = prices.map((v, i) => i > 0 ? (v >= prices[i - 1] ? '#e74c3c' : '#2ecc71') : '#1a7a4c');
+
+  charts.liChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '电池级碳酸锂（元/吨）',
+        data: prices,
+        borderColor: '#1a7a4c',
+        backgroundColor: 'rgba(26, 122, 76, 0.1)',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointColors,
+        tension: 0.3,
+        fill: true,
+        spanGaps: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const val = ctx.parsed.y;
+              const idx = ctx.dataIndex;
+              let deltaInfo = '';
+              if (idx > 0) {
+                const delta = prices[idx] - prices[idx - 1];
+                const sign = delta >= 0 ? '+' : '';
+                const tag = delta >= 0 ? '涨' : '跌';
+                deltaInfo = ` (${tag} ${sign}${delta.toFixed(0)}元)`;
+              }
+              return `${ctx.dataset.label}: ${val.toLocaleString('zh-CN')}${deltaInfo}`;
+            }
+          }
+        },
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxRotation: 45, minRotation: 0, font: { size: 10 } }, grid: { display: false } },
+        y: { title: { display: true, text: '元/吨' }, ticks: { font: { size: 11 } }, grid: { color: 'rgba(128,128,128,0.1)' } },
+      },
+    },
+  });
+}
+
+function renderLiTable(data) {
+  const tbody = document.querySelector('#liTable tbody');
+  if (!tbody) return;
+  const recent = data.slice(-20).reverse();
+  tbody.innerHTML = recent.map((d, i) => {
+    const realIdx = data.length - 1 - i;
+    const prev = realIdx > 0 ? data[realIdx - 1] : null;
+    const delta = prev ? (d.price - prev.price) : 0;
+    const pct = prev ? ((delta / prev.price) * 100).toFixed(1) : '0.0';
+    const color = delta >= 0 ? '#e74c3c' : '#2ecc71';
+    const sign = delta >= 0 ? '+' : '';
+    return `<tr>
+      <td>${d.date}</td>
+      <td>${d.price.toLocaleString('zh-CN')}</td>
+      <td style="color:${color}">${prev ? sign + delta.toLocaleString('zh-CN') : '-'}</td>
+      <td style="color:${color}">${prev ? sign + pct + '%' : '-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderLi(data) {
+  if (data.length === 0) {
+    document.getElementById('liCount').textContent = '暂无数据';
+    return;
+  }
+  allLiData = data;
+  document.getElementById('liCount').textContent = data.length + ' 个数据点 · ' + data[0].date + ' ~ ' + data[data.length - 1].date;
+  renderLiCards(data);
+  bindRangeBrush('liRangeBrush', 'liRangeSpan', allLiData, renderLiChart, { minVisible: 30, unit: '个交易日' });
+}
+
+async function loadLiCSV() {
+  try {
+    const resp = await fetch('lithium.csv?_=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const data = parseLiCSV(text);
+      if (data.length > 0) { renderLi(data); return; }
+    }
+  } catch (e) { console.warn('lithium CSV 加载失败:', e); }
+}
+
+loadCuCSV();
+loadCuInvCSV();
+loadLiCSV();
+
+// ====== 黄金储备 ======
+function parseGoldCSV(text) {
+  const lines = text.trim().split('\n');
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 4) continue;
+    result.push({
+      date: parts[0],
+      oz: parseInt(parts[1]),
+      tons: parseFloat(parts[2]),
+      change: parseFloat(parts[3]),
+    });
+  }
+  result.sort((a, b) => a.date.localeCompare(b.date));
+  return result;
+}
+
+function renderGoldCards(data) {
+  const latest = data[data.length - 1];
+  const maxOz = Math.max(...data.map(d => d.oz));
+  const minOz = Math.min(...data.map(d => d.oz));
+  const avgTons = (data.reduce((s, d) => s + d.tons, 0) / data.length).toFixed(1);
+  const totalChange = (latest.tons - data[0].tons).toFixed(2);
+  const color = latest.change >= 0 ? '#e74c3c' : '#2ecc71';
+  const sign = latest.change >= 0 ? '+' : '';
+  const html = `
+    <div class="card gold">
+      <div class="label">最新储备量</div>
+      <div class="value">${latest.oz.toLocaleString('zh-CN')} <span class="unit">万盎司</span></div>
+      <div class="sub">${latest.tons.toLocaleString('zh-CN')} 吨 · ${latest.date}</div>
+    </div>
+    <div class="card gold">
+      <div class="label">环比变化</div>
+      <div class="value" style="color:${color}">${sign}${latest.change.toFixed(2)} <span class="unit">吨</span></div>
+      <div class="sub" style="color:${color}">${sign}${(latest.change / (latest.tons - latest.change) * 100).toFixed(2)}%</div>
+    </div>
+    <div class="card gold">
+      <div class="label">区间最高</div>
+      <div class="value">${maxOz.toLocaleString('zh-CN')} <span class="unit">万盎司</span></div>
+      <div class="sub">${data.find(d => d.oz === maxOz).tons.toLocaleString('zh-CN')} 吨 · ${data.find(d => d.oz === maxOz).date}</div>
+    </div>
+    <div class="card gold">
+      <div class="label">区间最低</div>
+      <div class="value">${minOz.toLocaleString('zh-CN')} <span class="unit">万盎司</span></div>
+      <div class="sub">${data.find(d => d.oz === minOz).tons.toLocaleString('zh-CN')} 吨 · ${data.find(d => d.oz === minOz).date}</div>
+    </div>
+    <div class="card gold">
+      <div class="label">累计增持</div>
+      <div class="value" style="color:#e74c3c">+${totalChange} <span class="unit">吨</span></div>
+      <div class="sub">${data[0].date} 至 ${latest.date} · 均值 ${avgTons} 吨</div>
+    </div>
+  `;
+  document.getElementById('goldCards').innerHTML = html;
+}
+
+let allGoldData = [];
+
+function renderGoldChart(data) {
+  const canvas = document.getElementById('goldChart');
+  if (!canvas) return;
+  if (charts.goldChart) charts.goldChart.destroy();
+
+  const labels = data.map(d => d.date);
+  const tonsData = data.map(d => d.tons);
+  const pointColors = tonsData.map((v, i) => i > 0 ? (v >= tonsData[i - 1] ? '#e74c3c' : '#2ecc71') : '#c9971a');
+
+  charts.goldChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '黄金储备（吨）',
+        data: tonsData,
+        borderColor: '#c9971a',
+        backgroundColor: 'rgba(201, 151, 26, 0.1)',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointColors,
+        tension: 0.2,
+        fill: true,
+        spanGaps: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const val = ctx.parsed.y;
+              const idx = ctx.dataIndex;
+              const d = data[idx];
+              let deltaInfo = '';
+              if (idx > 0) {
+                const delta = d.change;
+                const sign = delta >= 0 ? '+' : '';
+                const tag = delta >= 0 ? '增持' : '减持';
+                deltaInfo = ` (${tag} ${sign}${delta.toFixed(2)}吨)`;
+              }
+              return `储备: ${val.toLocaleString('zh-CN')}吨${deltaInfo} | ${d.oz.toLocaleString('zh-CN')}万盎司`;
+            }
+          }
+        },
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxRotation: 45, minRotation: 0, font: { size: 10 } }, grid: { display: false } },
+        y: { title: { display: true, text: '吨' }, ticks: { font: { size: 11 } }, grid: { color: 'rgba(128,128,128,0.1)' } },
+      },
+    },
+  });
+}
+
+function renderGoldTable(data) {
+  const tbody = document.querySelector('#goldTable tbody');
+  if (!tbody) return;
+  const recent = data.slice(-20).reverse();
+  tbody.innerHTML = recent.map(d => {
+    const color = d.change >= 0 ? '#e74c3c' : '#2ecc71';
+    const sign = d.change >= 0 ? '+' : '';
+    const pct = d.change !== 0 ? (d.change / (d.tons - d.change) * 100).toFixed(2) : '0.00';
+    return `<tr>
+      <td>${d.date}</td>
+      <td>${d.oz.toLocaleString('zh-CN')}</td>
+      <td>${d.tons.toLocaleString('zh-CN')}</td>
+      <td style="color:${color}">${sign}${d.change.toFixed(2)}</td>
+      <td style="color:${color}">${sign}${pct}%</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderGold(data) {
+  if (data.length === 0) {
+    document.getElementById('goldCount').textContent = '暂无数据';
+    return;
+  }
+  allGoldData = data;
+  document.getElementById('goldCount').textContent = data.length + ' 个月 · ' + data[0].date + ' ~ ' + data[data.length - 1].date;
+  renderGoldCards(data);
+  bindRangeBrush('goldRangeBrush', 'goldRangeSpan', allGoldData, renderGoldChart, { minVisible: 12, unit: '个月' });
+}
+
+async function loadGoldCSV() {
+  try {
+    const resp = await fetch('gold_reserve.csv?_=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const data = parseGoldCSV(text);
+      if (data.length > 0) { renderGold(data); return; }
+    }
+  } catch (e) { console.warn('gold_reserve CSV 加载失败:', e); }
+}
+
+loadGoldCSV();
+
+// ====== 集运运价 SCFI（周度，财联社快讯汇总） ======
+function parseScfiCSV(text) {
+  const lines = text.trim().split('\n');
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 2 || !parts[0] || !parts[1]) continue;
+    result.push({
+      date: parts[0],
+      scfi: parseFloat(parts[1]),
+      chg: (parts[2] !== '' && parts[2] !== undefined) ? parseFloat(parts[2]) : null,
+      ccfi: (parts[3] !== '' && parts[3] !== undefined) ? parseFloat(parts[3]) : null,
+    });
+  }
+  result.sort((a, b) => a.date.localeCompare(b.date));
+  return result;
+}
+
+function scfiChgPct(d) {
+  if (d.chg === null || !d.scfi) return null;
+  const prev = d.scfi - d.chg;
+  return prev ? d.chg / prev * 100 : null;
+}
+
+function renderScfiCards(data) {
+  const latest = data[data.length - 1];
+  const vals = data.map(d => d.scfi);
+  const maxV = Math.max(...vals), minV = Math.min(...vals);
+  const maxD = data.find(d => d.scfi === maxV), minD = data.find(d => d.scfi === minV);
+  const chg = latest.chg;
+  const pct = scfiChgPct(latest);
+  const hasChg = chg !== null;
+  const color = hasChg && chg >= 0 ? '#e74c3c' : '#2ecc71';
+  const sign = hasChg && chg >= 0 ? '+' : '';
+  const ccfiD = [...data].reverse().find(d => d.ccfi !== null);
+  const fmt1 = v => v.toLocaleString('zh-CN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const html = `
+    <div class="card scfi">
+      <div class="label">最新 SCFI</div>
+      <div class="value">${fmt1(latest.scfi)} <span class="unit">点</span></div>
+      <div class="sub">${latest.date}</div>
+    </div>
+    <div class="card scfi">
+      <div class="label">环比上期</div>
+      <div class="value" style="color:${color}">${hasChg ? sign + fmt1(chg) : '—'} <span class="unit">点</span></div>
+      <div class="sub" style="color:${color}">${pct === null ? '' : sign + pct.toFixed(2) + '%'}</div>
+    </div>
+    <div class="card scfi">
+      <div class="label">区间最高</div>
+      <div class="value">${fmt1(maxV)} <span class="unit">点</span></div>
+      <div class="sub">${maxD.date}</div>
+    </div>
+    <div class="card scfi">
+      <div class="label">区间最低</div>
+      <div class="value">${fmt1(minV)} <span class="unit">点</span></div>
+      <div class="sub">${minD.date}</div>
+    </div>
+    <div class="card scfi">
+      <div class="label">CCFI 结算指数（参照）</div>
+      <div class="value">${ccfiD ? fmt1(ccfiD.ccfi) : '—'} <span class="unit">点</span></div>
+      <div class="sub">${ccfiD ? ccfiD.date : '无数据'}</div>
+    </div>
+  `;
+  document.getElementById('scfiCards').innerHTML = html;
+}
+
+let allScfiData = [];
+
+function renderScfiChart(data) {
+  const canvas = document.getElementById('scfiChart');
+  if (!canvas) return;
+  if (charts.scfiChart) charts.scfiChart.destroy();
+
+  const labels = data.map(d => d.date);
+  const scfiData = data.map(d => d.scfi);
+  // 即期运价涨红跌绿（A股习惯）：环比上涨红点、下跌绿点、首期/缺环比用主题色
+  const pointColors = data.map((d, i) =>
+    (i === 0 || d.chg === null) ? '#0e7a8a' : (d.chg >= 0 ? '#e74c3c' : '#2ecc71'));
+
+  charts.scfiChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'SCFI 综合指数（即期）',
+          data: scfiData,
+          borderColor: '#0e7a8a',
+          backgroundColor: 'rgba(14, 122, 138, 0.08)',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          pointBackgroundColor: pointColors,
+          pointBorderColor: pointColors,
+          tension: 0.2,
+          fill: true,
+          spanGaps: true,
+        },
+        {
+          label: 'CCFI 结算指数（参照）',
+          data: data.map(d => d.ccfi),
+          borderColor: '#f39c12',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointBackgroundColor: '#f39c12',
+          fill: false,
+          spanGaps: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const d = data[ctx.dataIndex];
+              if (ctx.datasetIndex === 0) {
+                let deltaInfo = '';
+                if (d.chg !== null) {
+                  const sign = d.chg >= 0 ? '+' : '';
+                  deltaInfo = `（环比 ${sign}${d.chg.toFixed(2)} 点）`;
+                }
+                return `SCFI: ${ctx.parsed.y.toLocaleString('zh-CN')} 点${deltaInfo}`;
+              }
+              return d.ccfi === null ? 'CCFI: 无该周报价' : `CCFI: ${d.ccfi.toLocaleString('zh-CN')} 点`;
+            }
+          }
+        },
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxRotation: 45, minRotation: 0, font: { size: 10 } }, grid: { display: false } },
+        y: { title: { display: true, text: '点' }, ticks: { font: { size: 11 } }, grid: { color: 'rgba(128,128,128,0.1)' } },
+      },
+    },
+  });
+}
+
+function renderScfiTable(data) {
+  const tbody = document.querySelector('#scfiTable tbody');
+  if (!tbody) return;
+  const recent = data.slice(-20).reverse();
+  tbody.innerHTML = recent.map(d => {
+    const pct = scfiChgPct(d);
+    const color = (d.chg !== null && d.chg >= 0) ? '#e74c3c' : '#2ecc71';
+    const sign = (d.chg !== null && d.chg >= 0) ? '+' : '';
+    return `<tr>
+      <td>${d.date}</td>
+      <td>${d.scfi.toLocaleString('zh-CN')}</td>
+      <td style="color:${color}">${d.chg === null ? '—' : sign + d.chg.toFixed(2)}</td>
+      <td style="color:${color}">${pct === null ? '—' : sign + pct.toFixed(2) + '%'}</td>
+      <td>${d.ccfi === null ? '—' : d.ccfi.toLocaleString('zh-CN')}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderScfi(data) {
+  if (data.length === 0) {
+    document.getElementById('scfiCount').textContent = '暂无数据';
+    return;
+  }
+  allScfiData = data;
+  document.getElementById('scfiCount').textContent = data.length + ' 期 · ' + data[0].date + ' ~ ' + data[data.length - 1].date;
+  renderScfiCards(data);
+  bindRangeBrush('scfiRangeBrush', 'scfiRangeSpan', allScfiData, renderScfiChart, { minVisible: 26, unit: '周' });
+}
+
+async function loadScfiCSV() {
+  try {
+    const resp = await fetch('scfi.csv?_=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const data = parseScfiCSV(text);
+      if (data.length > 0) { renderScfi(data); return; }
+    }
+  } catch (e) { console.warn('scfi CSV 加载失败:', e); }
+}
+
+loadScfiCSV();
+
+// ====== 碳酸锂期货仓单 ======
+function parseLiwCSV(text) {
+  const lines = text.trim().split('\n');
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 2 || !parts[0] || !parts[1]) continue;
+    result.push({
+      date: parts[0],
+      warrants: parseFloat(parts[1]),
+      change: (parts[2] !== '' && parts[2] !== undefined) ? parseFloat(parts[2]) : null,
+      rate: (parts[3] !== '' && parts[3] !== undefined) ? parseFloat(parts[3]) : null,
+    });
+  }
+  result.sort((a, b) => a.date.localeCompare(b.date));
+  return result;
+}
+
+function renderLiwCards(data) {
+  const latest = data[data.length - 1];
+  const vals = data.map(d => d.warrants);
+  const maxV = Math.max(...vals), minV = Math.min(...vals);
+  const maxD = data.find(d => d.warrants === maxV), minD = data.find(d => d.warrants === minV);
+  const hasChg = latest.change !== null;
+  const color = hasChg && latest.change >= 0 ? '#e74c3c' : '#2ecc71';
+  const sign = hasChg && latest.change >= 0 ? '+' : '';
+  const html = `
+    <div class="card liw">
+      <div class="label">最新仓单</div>
+      <div class="value">${latest.warrants.toLocaleString('zh-CN')} <span class="unit">手</span></div>
+      <div class="sub">${latest.date}</div>
+    </div>
+    <div class="card liw">
+      <div class="label">环比变化</div>
+      <div class="value" style="color:${color}">${hasChg ? sign + latest.change.toLocaleString('zh-CN') : '—'} <span class="unit">手</span></div>
+      <div class="sub" style="color:${color}">${hasChg && latest.rate !== null ? sign + latest.rate.toFixed(2) + '%' : ''}</div>
+    </div>
+    <div class="card liw">
+      <div class="label">区间最高</div>
+      <div class="value">${maxV.toLocaleString('zh-CN')} <span class="unit">手</span></div>
+      <div class="sub">${maxD.date}</div>
+    </div>
+    <div class="card liw">
+      <div class="label">区间最低</div>
+      <div class="value">${minV.toLocaleString('zh-CN')} <span class="unit">手</span></div>
+      <div class="sub">${minD.date}</div>
+    </div>
+    <div class="card liw">
+      <div class="label">平均仓单</div>
+      <div class="value">${Math.round(data.reduce((s, d) => s + d.warrants, 0) / data.length).toLocaleString('zh-CN')} <span class="unit">手</span></div>
+      <div class="sub">${data.length} 个交易日</div>
+    </div>
+  `;
+  document.getElementById('liwCards').innerHTML = html;
+}
+
+let allLiwData = [];
+
+function renderLiwChart(data) {
+  const canvas = document.getElementById('liwChart');
+  if (!canvas) return;
+  if (charts.liwChart) charts.liwChart.destroy();
+
+  const labels = data.map(d => d.date);
+  const pointColors = data.map((d, i) => {
+    if (i === 0 || d.change === null) return '#2e8d5f';
+    return d.change >= 0 ? '#e74c3c' : '#2ecc71';
+  });
+
+  charts.liwChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '碳酸锂期货仓单（手）',
+        data: data.map(d => d.warrants),
+        borderColor: '#2e8d5f',
+        backgroundColor: 'rgba(46, 141, 95, 0.1)',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointColors,
+        tension: 0.2,
+        fill: true,
+        spanGaps: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const d = data[ctx.dataIndex];
+              const sign = d.change !== null && d.change >= 0 ? '+' : '';
+              const chg = d.change !== null ? `（环比 ${sign}${d.change.toLocaleString('zh-CN')}手）` : '';
+              return `仓单: ${ctx.parsed.y.toLocaleString('zh-CN')}手${chg}`;
+            }
+          }
+        },
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { maxRotation: 45, minRotation: 0, font: { size: 10 } }, grid: { display: false } },
+        y: { title: { display: true, text: '手' }, ticks: { font: { size: 11 } }, grid: { color: 'rgba(128,128,128,0.1)' } },
+      },
+    },
+  });
+}
+
+function renderLiwTable(data) {
+  const tbody = document.querySelector('#liwTable tbody');
+  if (!tbody) return;
+  const recent = data.slice(-20).reverse();
+  tbody.innerHTML = recent.map(d => {
+    const hasChg = d.change !== null;
+    const color = hasChg && d.change >= 0 ? '#e74c3c' : '#2ecc71';
+    const sign = hasChg && d.change >= 0 ? '+' : '';
+    return `<tr>
+      <td>${d.date}</td>
+      <td>${d.warrants.toLocaleString('zh-CN')}</td>
+      <td style="color:${color}">${hasChg ? sign + d.change.toLocaleString('zh-CN') : '—'}</td>
+      <td style="color:${color}">${hasChg && d.rate !== null ? sign + d.rate.toFixed(2) + '%' : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderLiw(data) {
+  if (data.length === 0) {
+    document.getElementById('liwCount').textContent = '暂无数据';
+    return;
+  }
+  allLiwData = data;
+  document.getElementById('liwCount').textContent = data.length + ' 个交易日 · ' + data[0].date + ' ~ ' + data[data.length - 1].date;
+  renderLiwCards(data);
+  bindRangeBrush('liwRangeBrush', 'liwRangeSpan', allLiwData, renderLiwChart, { minVisible: 22, unit: '个交易日' });
+}
+
+async function loadLiwCSV() {
+  try {
+    const resp = await fetch('lithium_warrants.csv?_=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const data = parseLiwCSV(text);
+      if (data.length > 0) { renderLiw(data); return; }
+    }
+  } catch (e) { console.warn('lithium_warrants CSV 加载失败:', e); }
+}
+
+loadLiwCSV();
+
+// ====== 长江电力季度来水 & 发电 ======
+
+function parseCypCSV(text) {
+  const lines = text.trim().split('\n');
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 2 || !parts[0]) continue;
+    // CSV 列：
+    // 0 period_code_q, 1 period_name_q, 2 period_code_cum, 3 period_name_cum,
+    // 4 report_date, 5 title,
+    // 6 inflow, 7 inflow_yoy, 8 inflow_desc,
+    // 9 total_gen_q, 10 total_gen_q_yoy,
+    // 11 total_gen_cum, 12 total_gen_cum_yoy,
+    // 13 sanxia_q, 14 sanxia_q_yoy,
+    // 15 sanxia_cum, 16 sanxia_cum_yoy
+    result.push({
+      period: parts[0],
+      period_label: parts[0],        // 2025Q3 / 2026Q1 等
+      period_name_q: parts[1] || '', // 第一季度/第二季度...
+      period_code_cum: parts[2] || '',
+      period_name_cum: parts[3] || '',
+      notice_date: parts[4] || '',
+      title: parts[5] || '',
+      sanxia_inflow: (parts[6] !== '' && parts[6] !== undefined) ? parseFloat(parts[6]) : null,
+      sanxia_inflow_yoy: (parts[7] !== '' && parts[7] !== undefined) ? parseFloat(parts[7]) : null,
+      inflow_desc: parts[8] || '',
+      total_gen: (parts[9] !== '' && parts[9] !== undefined) ? parseFloat(parts[9]) : null,
+      total_gen_yoy: (parts[10] !== '' && parts[10] !== undefined) ? parseFloat(parts[10]) : null,
+      total_gen_cum: (parts[11] !== '' && parts[11] !== undefined) ? parseFloat(parts[11]) : null,
+      total_gen_cum_yoy: (parts[12] !== '' && parts[12] !== undefined) ? parseFloat(parts[12]) : null,
+      sanxia_gen: (parts[13] !== '' && parts[13] !== undefined) ? parseFloat(parts[13]) : null,
+      sanxia_gen_yoy: (parts[14] !== '' && parts[14] !== undefined) ? parseFloat(parts[14]) : null,
+      sanxia_gen_cum: (parts[15] !== '' && parts[15] !== undefined) ? parseFloat(parts[15]) : null,
+      sanxia_gen_cum_yoy: (parts[16] !== '' && parts[16] !== undefined) ? parseFloat(parts[16]) : null,
+    });
+  }
+  result.sort((a, b) => a.period.localeCompare(b.period));
+  return result;
+}
+
+function renderCypCards(data) {
+  const latest = data[data.length - 1];
+  const fmt = n => (n === null || n === undefined || isNaN(n)) ? '—' : n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtPct = n => {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    const sign = n > 0 ? '+' : '';
+    return `${sign}${n.toFixed(2)}%`;
+  };
+  const colorOf = n => {
+    if (n === null || n === undefined || isNaN(n)) return '#999';
+    return n >= 0 ? '#e74c3c' : '#2ecc71';
+  };
+  const inflowLabel = latest.inflow_desc ? `${latest.inflow_desc}` : '来水';
+
+  const html = `
+    <div class="card cyp">
+      <div class="label">最新公告</div>
+      <div class="value">${latest.period_label}</div>
+      <div class="sub">${latest.notice_date}</div>
+    </div>
+    <div class="card cyp">
+      <div class="label">三峡来水总量 · ${inflowLabel}</div>
+      <div class="value">${fmt(latest.sanxia_inflow)} <span class="unit">亿m³</span></div>
+      <div class="sub" style="color:${colorOf(latest.sanxia_inflow_yoy)}">同比 ${fmtPct(latest.sanxia_inflow_yoy)}</div>
+    </div>
+    <div class="card cyp">
+      <div class="label">梯级电站发电量 · 当季</div>
+      <div class="value">${fmt(latest.total_gen)} <span class="unit">亿kWh</span></div>
+      <div class="sub" style="color:${colorOf(latest.total_gen_yoy)}">同比 ${fmtPct(latest.total_gen_yoy)}</div>
+    </div>
+    <div class="card cyp">
+      <div class="label">三峡电站发电量 · 当季</div>
+      <div class="value">${fmt(latest.sanxia_gen)} <span class="unit">亿kWh</span></div>
+      <div class="sub" style="color:${colorOf(latest.sanxia_gen_yoy)}">同比 ${fmtPct(latest.sanxia_gen_yoy)}</div>
+    </div>
+  `;
+  document.getElementById('cypCards').innerHTML = html;
+}
+
+let allCypData = [];
+
+function renderCypInflowChart(data) {
+  const canvas = document.getElementById('cypInflowChart');
+  if (!canvas) return;
+  if (charts.cypInflowChart) charts.cypInflowChart.destroy();
+
+  const labels = data.map(d => d.period_label + (d.inflow_desc ? '\n(' + d.inflow_desc + ')' : ''));
+  const values = data.map(d => d.sanxia_inflow);
+  const yoy = data.map(d => d.sanxia_inflow_yoy);
+
+  charts.cypInflowChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: '三峡水库来水总量（亿立方米）',
+          data: values,
+          backgroundColor: 'rgba(41, 128, 185, 0.7)',
+          borderColor: '#2980b9',
+          borderWidth: 1,
+          yAxisID: 'y',
+          order: 1,
+        },
+        {
+          type: 'line',
+          label: '同比变化（%）',
+          data: yoy,
+          borderColor: '#e74c3c',
+          backgroundColor: '#e74c3c',
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          tension: 0.2,
+          yAxisID: 'y1',
+          order: 2,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        title: { display: false },
+        subtitle: {
+          display: true,
+          text: '公告披露口径 · 多为累计值',
+          color: '#2980b9',
+          font: { size: 11, weight: 600 },
+          padding: { bottom: 8 }
+        },
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            title: items => {
+              const d = data[items[0].dataIndex];
+              return d.period_label + (d.inflow_desc ? '（' + d.inflow_desc + ' · 累计口径）' : '（累计口径）');
+            },
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if (v === null || v === undefined || isNaN(v)) return ctx.dataset.label + ': —';
+              if (ctx.dataset.type === 'line') return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+              return `${ctx.dataset.label}: ${v.toFixed(2)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { font: { size: 9 } }, grid: { display: false } },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          title: { display: true, text: '亿立方米' },
+          ticks: { font: { size: 11 } },
+          grid: { color: 'rgba(128,128,128,0.1)' }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          title: { display: true, text: '同比%' },
+          ticks: {
+            font: { size: 11 },
+            callback: v => v + '%'
+          },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function renderCypGenChart(data) {
+  const canvas = document.getElementById('cypGenChart');
+  if (!canvas) return;
+  if (charts.cypGenChart) charts.cypGenChart.destroy();
+
+  const labels = data.map(d => d.period_label);
+  const values = data.map(d => d.total_gen);
+  const yoy = data.map(d => d.total_gen_yoy);
+
+  charts.cypGenChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: '六座梯级电站总发电量（亿千瓦时）',
+          data: values,
+          backgroundColor: 'rgba(155, 89, 182, 0.7)',
+          borderColor: '#9b59b6',
+          borderWidth: 1,
+          yAxisID: 'y',
+          order: 1,
+        },
+        {
+          type: 'line',
+          label: '同比变化（%）',
+          data: yoy,
+          borderColor: '#e74c3c',
+          backgroundColor: '#e74c3c',
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          tension: 0.2,
+          yAxisID: 'y1',
+          order: 2,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        title: { display: false },
+        subtitle: {
+          display: true,
+          text: '单季度发电量（公告披露口径）',
+          color: '#9b59b6',
+          font: { size: 11, weight: 600 },
+          padding: { bottom: 8 }
+        },
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            title: items => {
+              const d = data[items[0].dataIndex];
+              return d.period_label + '（单季度口径）';
+            },
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if (v === null || v === undefined || isNaN(v)) return ctx.dataset.label + ': —';
+              if (ctx.dataset.type === 'line') return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+              return `${ctx.dataset.label}: ${v.toFixed(2)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { font: { size: 10 } }, grid: { display: false } },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          title: { display: true, text: '亿千瓦时' },
+          ticks: { font: { size: 11 } },
+          grid: { color: 'rgba(128,128,128,0.1)' }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          title: { display: true, text: '同比%' },
+          ticks: {
+            font: { size: 11 },
+            callback: v => v + '%'
+          },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function renderCypTable(data) {
+  const tbody = document.querySelector('#cypTable tbody');
+  if (!tbody) return;
+  const recent = data.slice().reverse();
+  const fmt = n => (n === null || n === undefined || isNaN(n)) ? '—' : n.toFixed(2);
+  const fmtPct = n => {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    const sign = n > 0 ? '+' : '';
+    return `${sign}${n.toFixed(2)}%`;
+  };
+  const colorOf = n => {
+    if (n === null || n === undefined || isNaN(n)) return '#999';
+    return n >= 0 ? '#e74c3c' : '#2ecc71';
+  };
+  tbody.innerHTML = recent.map(d => `
+    <tr>
+      <td>${d.period_label}</td>
+      <td>${d.notice_date}</td>
+      <td>${fmt(d.sanxia_inflow)}</td>
+      <td>${d.inflow_desc || '—'}</td>
+      <td>${fmt(d.total_gen)}</td>
+      <td style="color:${colorOf(d.total_gen_yoy)}">${fmtPct(d.total_gen_yoy)}</td>
+      <td>${fmt(d.total_gen_cum)}</td>
+      <td style="color:${colorOf(d.total_gen_cum_yoy)}">${fmtPct(d.total_gen_cum_yoy)}</td>
+      <td>${fmt(d.sanxia_gen)}</td>
+      <td style="color:${colorOf(d.sanxia_gen_yoy)}">${fmtPct(d.sanxia_gen_yoy)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderCyp(data) {
+  if (data.length === 0) {
+    document.getElementById('cypCount').textContent = '暂无数据';
+    return;
+  }
+  allCypData = data;
+  document.getElementById('cypCount').textContent = data.length + ' 个季度 · ' + data[0].period_label + ' ~ ' + data[data.length - 1].period_label + ' · 发电量均为当季单季度值';
+  renderCypCards(data);
+  renderCypInflowChart(data);
+  renderCypGenChart(data);
+}
+
+async function loadCypCSV() {
+  try {
+    const resp = await fetch('yangtze_power.csv?_=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const data = parseCypCSV(text);
+      if (data.length > 0) { renderCyp(data); return; }
+    }
+  } catch (e) { console.warn('yangtze_power CSV 加载失败:', e); }
+}
+
+loadCypCSV();
+
+// ====== 三峡水库实时水位 ======
+function parseTgCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 3 || !parts[0]) continue;
+    const ts = parseInt(parts[0], 10) * 1000;
+    const level = parts[2] !== '' ? parseFloat(parts[2]) : null;
+    const inflow = parts[3] !== '' ? parseInt(parts[3], 10) : null;
+    const outflow = parts[4] !== '' ? parseInt(parts[4], 10) : null;
+    result.push({
+      timestamp: ts,
+      date: new Date(ts),
+      datetime: parts[1] || '',
+      level: level,
+      inflow: inflow,
+      outflow: outflow,
+    });
+  }
+  result.sort((a, b) => a.timestamp - b.timestamp);
+  return result;
+}
+
+function renderTgCards(data) {
+  const latest = data[data.length - 1];
+  if (!latest) return;
+  const fmt = n => (n === null || n === undefined || isNaN(n)) ? '—' : n.toLocaleString('zh-CN');
+  const html = `
+    <div class="card tg">
+      <div class="label">最新水位</div>
+      <div class="value">${fmt(latest.level)} <span class="unit">m</span></div>
+      <div class="sub">${latest.datetime || ''}</div>
+    </div>
+    <div class="card tg">
+      <div class="label">出库流量</div>
+      <div class="value">${fmt(latest.outflow)} <span class="unit">m³/s</span></div>
+      <div class="sub">长江水文网实时</div>
+    </div>
+    <div class="card tg">
+      <div class="label">数据点数</div>
+      <div class="value">${data.length} <span class="unit">条</span></div>
+      <div class="sub">自 ${data[0].datetime || ''}</div>
+    </div>
+  `;
+  document.getElementById('tgCards').innerHTML = html;
+}
+
+function renderTgChart(data) {
+  const canvas = document.getElementById('tgLevelChart');
+  if (!canvas) return;
+  if (charts.tgLevelChart) charts.tgLevelChart.destroy();
+  const labels = data.map(d => d.datetime);
+  const levels = data.map(d => d.level);
+  const outflows = data.map(d => d.outflow);
+
+  charts.tgLevelChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          type: 'line',
+          label: '坝前水位（m）',
+          data: levels,
+          borderColor: '#16a085',
+          backgroundColor: 'rgba(22, 160, 133, 0.1)',
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          fill: true,
+          tension: 0.2,
+          yAxisID: 'y',
+        },
+        {
+          type: 'line',
+          label: '出库流量（m³/s）',
+          data: outflows,
+          borderColor: '#e67e22',
+          backgroundColor: 'rgba(230, 126, 34, 0.05)',
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          fill: false,
+          tension: 0.2,
+          yAxisID: 'y1',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if (v === null || v === undefined || isNaN(v)) return ctx.dataset.label + ': —';
+              return `${ctx.dataset.label}: ${v.toLocaleString('zh-CN')}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { afterBuildTicks: finalTicks, ticks: { font: { size: 9 }, maxRotation: 30 }, grid: { display: false } },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          title: { display: true, text: '水位(m)' },
+          ticks: { font: { size: 11 } },
+          grid: { color: 'rgba(128,128,128,0.1)' }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          title: { display: true, text: '流量(m³/s)' },
+          ticks: { font: { size: 11 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function renderTgTable(data) {
+  const tbody = document.querySelector('#tgTable tbody');
+  if (!tbody) return;
+  const recent = data.slice().reverse().slice(0, 30);
+  const fmt = n => (n === null || n === undefined || isNaN(n)) ? '—' : n.toLocaleString('zh-CN');
+  tbody.innerHTML = recent.map(d => `
+    <tr>
+      <td>${d.datetime}</td>
+      <td>${fmt(d.level)}</td>
+      <td>${fmt(d.inflow)}</td>
+      <td>${fmt(d.outflow)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderTg(data) {
+  if (data.length === 0) {
+    document.getElementById('tgCount').textContent = '暂无数据';
+    return;
+  }
+  document.getElementById('tgCount').textContent = data.length + ' 条记录 · ' + (data[0].datetime || '') + ' ~ ' + (data[data.length - 1].datetime || '');
+  renderTgCards(data);
+  renderTgChart(data);
+}
+
+async function loadTgCSV() {
+  try {
+    const resp = await fetch('three_gorges_level.csv?_=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const data = parseTgCSV(text);
+      if (data.length > 0) { renderTg(data); return; }
+    }
+  } catch (e) { console.warn('three_gorges_level CSV 加载失败:', e); }
+}
+
+loadTgCSV();
+
+// ====== 侧边导航栏 ======
+(function() {
+  'use strict';
+  const navItems = document.querySelectorAll('.nav-item');
+  const sections = [...navItems].map(item => document.getElementById('sec-' + item.dataset.section)).filter(Boolean);
+  
+  // 平滑滚动
+  navItems.forEach(item => {
+    item.addEventListener('click', function(e) {
+      e.preventDefault();
+      const target = document.getElementById('sec-' + this.dataset.section);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // 手机端关闭侧栏
+        if (window.innerWidth <= 768) closeSidebar();
+      }
+    });
+  });
+
+  // 滚动监听 (Scroll Spy)
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        updateActiveNav();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }, { passive: true });
+
+  function updateActiveNav() {
+    const scrollTop = window.scrollY + 120; // 偏移量，让标题刚过顶部时即触发
+    let current = sections[0];
+    for (const sec of sections) {
+      if (sec && sec.offsetTop <= scrollTop) current = sec;
+    }
+    if (current) {
+      const currentId = current.id.replace('sec-', '');
+      navItems.forEach(item => {
+        item.classList.toggle('active', item.dataset.section === currentId);
+      });
+    }
+  }
+
+  // 手机端菜单切换
+  const menuToggle = document.getElementById('menuToggle');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  menuToggle.addEventListener('click', () => {
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+  });
+  overlay.addEventListener('click', closeSidebar);
+
+  // 初始触发一次滚动监听
+  updateActiveNav();
+})();
+</script>
+</div><!-- .main-content -->
+
+<!-- 访问计数（仅统计访问量，不含任何个人信息） -->
+<script>
+(function(){
+  /* 优先用服务端下发的 cookie 标识，与每日访问额度用同一个 ID */
+  var ck = '';
+  try {
+    var m = document.cookie.match(/(?:^|;\s*)wb_did=([^;]*)/);
+    if (m) ck = decodeURIComponent(m[1]);
+  } catch(e){}
+  var DID = ck;
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(DID)) {
+    DID = (function(){
+      var k = 'etf_did';
+      try { var v0 = localStorage.getItem(k); if (v0) return v0; } catch(e){}
+      var s = '', a = new Uint8Array(16);
+      try {
+        (window.crypto || window.msCrypto).getRandomValues(a);
+        for (var i = 0; i < a.length; i++) s += ('0' + a[i].toString(16)).slice(-2);
+      } catch(e){ s = Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+      var v = 'v' + s;
+      try { localStorage.setItem(k, v); } catch(e){}
+      return v;
+    })();
+  }
+  try { fetch('/api/visit', { headers: { 'x-did': DID }, keepalive: true }).catch(function(){}); } catch(e){}
+})();
+</script>
+</body>
+</html>

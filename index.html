@@ -148,6 +148,48 @@ body {
   margin-top: 4px;
 }
 
+/* 数据更新说明图例 */
+.data-note {
+  margin: 10px auto 0;
+  max-width: 1100px;
+  padding: 8px 12px;
+  background: #f7f9fc;
+  border: 1px solid #e3e8ef;
+  border-radius: 8px;
+  font-size: 11px;
+  color: #555;
+  text-align: left;
+}
+.data-note .dn-title {
+  font-weight: 700;
+  color: #2c3e50;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.data-note .dn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+.data-note .dn-tag {
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.data-note .dn-tag.live { color: #1a7a4c; }
+.data-note .dn-tag.frozen { color: #7f8c8d; }
+.data-note .dn-item {
+  background: #fff;
+  border: 1px solid #e3e8ef;
+  padding: 2px 7px;
+  border-radius: 10px;
+  color: #444;
+  white-space: nowrap;
+}
+
 /* 分类区块 */
 .section {
   margin: 0 0 20px;
@@ -562,6 +604,31 @@ window.__CSV__ = {"hs300_etf_shares.csv": "日期,基金代码,基金简称,总�
   <h1>ETF 份额追踪 · 沪深300 & 中证500</h1>
   <div class="subtitle">上海证券交易所 · 基金规模（清算后数据）</div>
   <div class="update-time" id="updateTime">加载中...</div>
+  <div class="data-note">
+    <div class="dn-title">数据更新说明</div>
+    <div class="dn-row">
+      <span class="dn-tag live"><span class="dot green"></span>实时公网源（akshare 公开接口 · 自动更新）</span>
+      <span class="dn-item">黄金储备</span>
+      <span class="dn-item">沪铜库存</span>
+      <span class="dn-item">铜价</span>
+      <span class="dn-item">锂价</span>
+      <span class="dn-item">铝价（期货主力≈现货）</span>
+    </div>
+    <div class="dn-row">
+      <span class="dn-tag frozen"><span class="dot gray"></span>历史定格（源站已锁 · 保留最后更新值 · 非实时）</span>
+      <span class="dn-item">沪深300/中证500 ETF份额 (10-21)</span>
+      <span class="dn-item">融资融券 (10-20)</span>
+      <span class="dn-item">煤炭价格 (10-21)</span>
+      <span class="dn-item">铝锭库存 (10-19)</span>
+      <span class="dn-item">铝仓单 (10-21)</span>
+      <span class="dn-item">锂仓单 (09-30)</span>
+      <span class="dn-item">SCFI 集运 (10-09)</span>
+      <span class="dn-item">长电发电 (2026Q3)</span>
+      <span class="dn-item">三峡水位</span>
+      <span class="dn-item">氧化铝</span>
+      <span class="dn-item">工厂库存 (10-15)</span>
+    </div>
+  </div>
 </div>
 
 <!-- ====== 沪深300 区块 ====== -->
